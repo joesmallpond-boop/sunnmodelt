@@ -246,7 +246,7 @@ History h_cabgain(0);
 
 iq = 0; vp0 = 0; x = 0; y = 0; i = 0; j = 0; lo = 0; hi = 0; ti = 0; vin = 0; vkk = 0; vg = 0; vpk = 0; vgk = 0;
 kz = 0; ksp = 0; ke1 = 0; kip = 0; gx = 0; gsp = 0; lx = 0; li = 0; lf = 0; la = 0; lb = 0;
-hpt = 0; fot = 0; tsy = 0; bc1 = 0; bc2 = 0; bc3 = 0; fs2 = samplerate * 2; os = 0; xin = 0;
+hpt = 0; fot = 0; tsy = 0; bc1 = 0; bc2 = 0; bc3 = 0; fs2 = samplerate * 2; xin = 0;
 a = 0; b = 0; pre = 0; pin = 0; vpi = 0; u = 0; pz = 0; psp = 0; pp = 0; sA = 0; sB = 0; pm = 0;
 vs = 0; fbr = 0; yo = 0; dy = 0; vbias = 0; vfull = 0; sagamt = 0; sagf = 0; r1 = 0; r2 = 0; rth = 0;
 pt = 0; pm1 = 0; pl = 0; tap = 0; wc = 0; cw = 0; sw = 0; al = 0; ga = 0; a0 = 0; ysec = 0; cb = 0; cg = 0;
@@ -816,9 +816,8 @@ vbias = 24.1 + (60.3 - 24.1) * sm_power;      // bias supply: club -24.1V / aren
 vfull = 21.6 + (44.7 - 21.6) * sm_power;      // peak speaker volts at full power (15.3 / 31.6 Vrms)
 sagamt = 0.10 - 0.04 * sm_power;
 yo = 0;
-for (os = 0; os < 2; os = os + 1) {
-xin = x;
-if (os == 0) { xin = 0.5 * (h_xprev + x); }
+// ===== oversampled sample 1 of 2 (interpolated)
+xin = 0.5 * (h_xprev + x);
 // V1A: 68k grid stopper + Miller C
 h_lp_in = h_lp_in + h_k_in * (xin - h_lp_in); xin = h_lp_in;
 lx = clamp((xin) / 8.0 * 0.5 + 0.5, 0, 1) * 2047.0;
@@ -900,7 +899,89 @@ ysec = h_dc_b0 * y + h_dc_b1 * h_d1x1 + h_dc_b2 * h_d1x2 - h_dc_a1 * h_d1y1 - h_
 h_d1x2 = h_d1x1; h_d1x1 = y; h_d1y2 = h_d1y1; h_d1y1 = ysec; y = ysec;
 ysec = h_dc2_b0 * y + h_dc2_b1 * h_d2x1 + h_dc2_b2 * h_d2x2 - h_dc2_a1 * h_d2y1 - h_dc2_a2 * h_d2y2;
 h_d2x2 = h_d2x1; h_d2x1 = y; h_d2y2 = h_d2y1; h_d2y1 = ysec; yo = ysec;
-}
+// ===== oversampled sample 2 of 2
+xin = x;
+// V1A: 68k grid stopper + Miller C
+h_lp_in = h_lp_in + h_k_in * (xin - h_lp_in); xin = h_lp_in;
+lx = clamp((xin) / 8.0 * 0.5 + 0.5, 0, 1) * 2047.0;
+li = floor(lx); li = min(li, 2046.0); lf = lx - li;
+la = peek(tb_v1a, li); lb = peek(tb_v1a, li + 1);
+xin = la + (lb - la) * lf - h_v1a_q;
+hpt = h_k_hp7 * (h_v1a_hpy + xin - h_v1a_hpx); h_v1a_hpx = xin; h_v1a_hpy = hpt; xin = hpt;
+// ---------- channel 1: bright/volume net -> V2A -> V2B cathode follower -> tone stack
+a = xin;
+fot = h_c1_vb0 * a + h_c1_vb1 * h_c1_vx - h_c1_va1 * h_c1_vy; h_c1_vx = a; h_c1_vy = fot; a = fot;
+a = a * h_c1_div;
+h_c1_lp = h_c1_lp + h_c1_mill * (a - h_c1_lp); a = h_c1_lp;
+fot = h_k_v2a_b0 * a + h_k_v2a_b1 * h_v2a_sx - h_k_v2a_a1 * h_v2a_sy; h_v2a_sx = a; h_v2a_sy = fot; a = fot;
+lx = clamp((a) / 120.0 * 0.5 + 0.5, 0, 1) * 2047.0;
+li = floor(lx); li = min(li, 2046.0); lf = lx - li;
+la = peek(tb_v2a, li); lb = peek(tb_v2a, li + 1);
+a = la + (lb - la) * lf - h_v2a_q;
+a = a * 0.98;
+tsy = h_ts1_b0 * a + h_ts1_z1;
+h_ts1_z1 = h_ts1_b1 * a - h_ts1_a1 * tsy + h_ts1_z2;
+h_ts1_z2 = h_ts1_b2 * a - h_ts1_a2 * tsy + h_ts1_z3;
+h_ts1_z3 = h_ts1_b3 * a - h_ts1_a3 * tsy;
+a = tsy;
+// ---------- channel 2: gain -> V1B -> R23/C13 -> V3A (cold) -> R28/C15 -> V3B -> V4A CF -> stack -> volume
+b = xin * h_c2_gdiv;
+h_c2_lp = h_c2_lp + h_c2_mill * (b - h_c2_lp); b = h_c2_lp;
+fot = h_k_v1b_b0 * b + h_k_v1b_b1 * h_v1b_sx - h_k_v1b_a1 * h_v1b_sy; h_v1b_sx = b; h_v1b_sy = fot; b = fot;
+lx = clamp((b) / 80.0 * 0.5 + 0.5, 0, 1) * 2047.0;
+li = floor(lx); li = min(li, 2046.0); lf = lx - li;
+la = peek(tb_v1b, li); lb = peek(tb_v1b, li + 1);
+b = la + (lb - la) * lf - h_v1b_q;
+hpt = h_k_hp10 * (h_v1b_hpy + b - h_v1b_hpx); h_v1b_hpx = b; h_v1b_hpy = hpt; b = hpt;
+fot = h_k_n_b0 * b + h_k_n_b1 * h_n1x - h_k_n_a1 * h_n1y; h_n1x = b; h_n1y = fot; b = fot;
+lx = clamp((b) / 120.0 * 0.5 + 0.5, 0, 1) * 2047.0;
+li = floor(lx); li = min(li, 2046.0); lf = lx - li;
+la = peek(tb_v3a, li); lb = peek(tb_v3a, li + 1);
+b = la + (lb - la) * lf - h_v3a_q;
+hpt = h_k_hp5 * (h_v3a_hpy + b - h_v3a_hpx); h_v3a_hpx = b; h_v3a_hpy = hpt; b = hpt;
+fot = h_k_n_b0 * b + h_k_n_b1 * h_n2x - h_k_n_a1 * h_n2y; h_n2x = b; h_n2y = fot; b = fot;
+fot = h_k_v3b_b0 * b + h_k_v3b_b1 * h_v3b_sx - h_k_v3b_a1 * h_v3b_sy; h_v3b_sx = b; h_v3b_sy = fot; b = fot;
+lx = clamp((b) / 120.0 * 0.5 + 0.5, 0, 1) * 2047.0;
+li = floor(lx); li = min(li, 2046.0); lf = lx - li;
+la = peek(tb_v3b, li); lb = peek(tb_v3b, li + 1);
+b = la + (lb - la) * lf - h_v3b_q;
+h_c16 = h_c16 + h_k_c16 * (b - h_c16); b = h_c16;
+b = b * 0.98;
+tsy = h_ts2_b0 * b + h_ts2_z1;
+h_ts2_z1 = h_ts2_b1 * b - h_ts2_a1 * tsy + h_ts2_z2;
+h_ts2_z2 = h_ts2_b2 * b - h_ts2_a2 * tsy + h_ts2_z3;
+h_ts2_z3 = h_ts2_b3 * b - h_ts2_a3 * tsy;
+b = tsy;
+b = b * h_c2_volr;
+// ---------- channel relays, fx loop buffers (unity)
+pre = a + (b - a) * sm_chsel;
+hpt = h_k_hp15 * (h_fx_hpy + pre - h_fx_hpx); h_fx_hpx = pre; h_fx_hpy = hpt; pre = hpt;
+// ---------- power amp: V6 long-tail PI, 4x6L6GC push-pull, NFB with presence
+hpt = h_k_hp7 * (h_pi_hpy + pre - h_pi_hpx); h_pi_hpx = pre; h_pi_hpy = hpt; pre = hpt;
+pin = pre - h_fb;
+vpi = 70 * tanh(27 * pin / 70);
+hpt = h_k_hp34 * (h_pg_hpy + vpi - h_pg_hpx); h_pg_hpx = vpi; h_pg_hpy = hpt; vpi = hpt;
+u = vpi / vbias;
+sagf = 1 - sagamt * min(sqrt(h_env), 1);
+pm = 2.6 * sagf;
+pz = 1 + u; psp = pz; if (8 * pz < 30) { psp = log(1 + exp(8 * pz)) / 8; }
+pp = pow(psp, 1.5); sA = pm * tanh(pp / pm);
+pz = 1 - u; psp = pz; if (8 * pz < 30) { psp = log(1 + exp(8 * pz)) / 8; }
+pp = pow(psp, 1.5); sB = pm * tanh(pp / pm);
+dy = (sA - sB) / 3;
+hpt = h_k_hp30 * (h_ot_hpy + dy - h_ot_hpx); h_ot_hpx = dy; h_ot_hpy = hpt; dy = hpt;
+h_ot_lp = h_ot_lp + h_k_lpot * (dy - h_ot_lp); dy = h_ot_lp;
+vs = dy * vfull;
+fbr = vs * 0.1;
+hpt = h_k_pres * (h_pres_y + fbr - h_pres_x); h_pres_x = fbr; h_pres_y = hpt; fbr = hpt;
+h_fb = vs * 0.1 - ((sm_presence - 1) / 9) * h_pres_y;
+if (dy * dy > h_env) { h_env = h_env + h_k_att * (dy * dy - h_env); } else { h_env = h_env + h_k_rel * (dy * dy - h_env); }
+y = vs / 44.7;
+// decimation filter
+ysec = h_dc_b0 * y + h_dc_b1 * h_d1x1 + h_dc_b2 * h_d1x2 - h_dc_a1 * h_d1y1 - h_dc_a2 * h_d1y2;
+h_d1x2 = h_d1x1; h_d1x1 = y; h_d1y2 = h_d1y1; h_d1y1 = ysec; y = ysec;
+ysec = h_dc2_b0 * y + h_dc2_b1 * h_d2x1 + h_dc2_b2 * h_d2x2 - h_dc2_a1 * h_d2y1 - h_dc2_a2 * h_d2y2;
+h_d2x2 = h_d2x1; h_d2x1 = y; h_d2y2 = h_d2y1; h_d2y1 = ysec; yo = ysec;
 h_xprev = x;
 // ---------- cabinet
 y = yo;

@@ -13,6 +13,6 @@ if __name__=='__main__':
     for ch in (0,1):
         for amp in (0.01,0.05,0.2,0.5):
             for cab in (0,):
-                y=run(sine(440,amp),channel=ch,cab=cab)
+                y=run(sine(440,amp),chsel=ch,cab=cab)
                 yy=y[len(y)//2:]
                 print(f'ch{ch+1} in={amp:5} peak={np.max(abs(yy)):.3f} rms={np.sqrt(np.mean(yy**2)):.3f} thd={thd(y,440)*100:6.1f}%')
