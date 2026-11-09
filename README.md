@@ -27,7 +27,7 @@ Knobs read 1–10 like the real amp, where 5½ is half rotation. Pot tapers foll
 
 ## How it's modelled
 
-- **12AX7 stages**: Koren triode equations solved on each stage's load line at device load, using the B+, plate, cathode and AC-load values from the schematic. Includes grid conduction through the source resistance. The 18k cathode on V3A is solved dynamically.
+- **12AX7 stages**: Koren triode equations solved on each stage's load line, using the B+, plate, cathode and AC-load values from the schematic. Includes grid conduction through the source resistance, and the 18k cathode on V3A is solved dynamically. Each curve is pre-fitted (`src/tubefit.py`, max error 0.4%) so the gen~ code has no loops or tables.
 - **Cathode bypass caps** (C11, C7, C17) are modelled as shelving filters. Coupling caps and the R23/C13 and R28/C15 treble-pass dividers come from the part values.
 - **Tone stacks**: exact 3rd-order transfer functions from nodal analysis of each stack (`src/tonestack.py`), with source and load impedances, then bilinear-transformed.
 - **Power amp**: V6 long-tail phase inverter → 4×6L6GC push-pull class AB → output transformer, with global negative feedback, presence, and supply sag. The non-linear sections run at 2× oversampling.
