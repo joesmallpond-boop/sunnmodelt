@@ -9,7 +9,7 @@ for line in src.split('\n'):
     else: body.append(line)
 b='\n'.join(body)
 gl={re.match(r'.*?(\w+)\s*(=|\[)',g)[1] for g in glob}
-names=set(re.findall(r'\b([A-Za-z_]\w*)\s*=(?!=)',b))-gl-{'out1','out2'}
+names=set(re.findall(r'\b([A-Za-z_]\w*)\s*=(?!=)',b))-gl-{'out1','out2','out3','out4'}
 c='''#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,7 +26,7 @@ c='''#include <stdio.h>
 double samplerate=48000;
 '''+'\n'.join(glob)+'''
 void tick(double in1,double in2,double*o1,double*o2){
-double out1=0,out2=0;
+double out1=0,out2=0,out3=0,out4=0;
 double '''+', '.join(sorted(names))+''';
 '''+b+'''
 *o1=out1;*o2=out2;}

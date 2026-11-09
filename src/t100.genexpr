@@ -16,6 +16,7 @@ Param standby(0, min=0, max=1);
 Param power(1, min=0, max=1);
 Param cab(1, min=0, max=7);
 Param p_output(-6, min=-36, max=12);
+Param dbg_tap(0, min=0, max=5);
 History h_init(0);
 History h_sr(0);
 History h_xprev(0);
@@ -238,6 +239,8 @@ History h_cb7_x2(0);
 History h_cb7_y1(0);
 History h_cb7_y2(0);
 History h_cabgain(0);
+History h_nan(0);
+History h_dbgph(0);
 
 Lh_init = h_init;
 Lh_sr = h_sr;
@@ -461,9 +464,11 @@ Lh_cb7_x2 = h_cb7_x2;
 Lh_cb7_y1 = h_cb7_y1;
 Lh_cb7_y2 = h_cb7_y2;
 Lh_cabgain = h_cabgain;
+Lh_nan = h_nan;
+Lh_dbgph = h_dbgph;
 iq = 0; vp0 = 0; x = 0; y = 0; i = 0; j = 0; lo = 0; hi = 0; ti = 0; vin = 0; vkk = 0; vg = 0; vpk = 0; vgk = 0;
 kz = 0; ksp = 0; ke1 = 0; kip = 0; gx = 0; gsp = 0; lx = 0; li = 0; lf = 0; la = 0; lb = 0;
-tb_t = 0; tb_t2 = 0; tb_b0 = 0; tb_b1 = 0; tb_b2 = 0; hpt = 0; fot = 0; tsy = 0; bc1 = 0; bc2 = 0; bc3 = 0; fs2 = samplerate * 2; xin = 0;
+tp = 0; d_v1a = 0; d_pre = 0; d_pa = 0; tb_t = 0; tb_t2 = 0; tb_b0 = 0; tb_b1 = 0; tb_b2 = 0; hpt = 0; fot = 0; tsy = 0; bc1 = 0; bc2 = 0; bc3 = 0; fs2 = samplerate * 2; xin = 0;
 a = 0; b = 0; pre = 0; pin = 0; vpi = 0; u = 0; pz = 0; psp = 0; pp = 0; sA = 0; sB = 0; pm = 0;
 vs = 0; fbr = 0; yo = 0; dy = 0; vbias = 0; vfull = 0; sagamt = 0; sagf = 0; r1 = 0; r2 = 0; rth = 0;
 pt = 0; pm1 = 0; pl = 0; tap = 0; wc = 0; cw = 0; sw = 0; al = 0; ga = 0; a0 = 0; ysec = 0; cb = 0; cg = 0;
@@ -858,6 +863,7 @@ tb_b0 = 10.75904350110603 + tb_t2 * tb_b1 - tb_b2; tb_b2 = tb_b1; tb_b1 = tb_b0;
 tb_b0 = -1.900905351733022 + tb_t2 * tb_b1 - tb_b2; tb_b2 = tb_b1; tb_b1 = tb_b0;
 tb_b0 = -75.36048906741267 + tb_t2 * tb_b1 - tb_b2; tb_b2 = tb_b1; tb_b1 = tb_b0;
 xin = -3.9029844779071934 + tb_t * tb_b1 - tb_b2;
+d_v1a = xin;
 hpt = Lh_k_hp7 * (Lh_v1a_hpy + xin - Lh_v1a_hpx); Lh_v1a_hpx = xin; Lh_v1a_hpy = hpt; xin = hpt;
 // ---------- channel 1: bright/volume net -> V2A -> V2B cathode follower -> tone stack
 a = xin;
@@ -1035,6 +1041,7 @@ b = b * Lh_c2_volr;
 // ---------- channel relays, fx loop buffers (unity)
 pre = a + (b - a) * Lsm_chsel;
 hpt = Lh_k_hp15 * (Lh_fx_hpy + pre - Lh_fx_hpx); Lh_fx_hpx = pre; Lh_fx_hpy = hpt; pre = hpt;
+d_pre = pre;
 // ---------- power amp: V6 long-tail PI, 4x6L6GC push-pull, NFB with presence
 hpt = Lh_k_hp7 * (Lh_pi_hpy + pre - Lh_pi_hpx); Lh_pi_hpx = pre; Lh_pi_hpy = hpt; pre = hpt;
 pin = pre - Lh_fb;
@@ -1056,6 +1063,7 @@ hpt = Lh_k_pres * (Lh_pres_y + fbr - Lh_pres_x); Lh_pres_x = fbr; Lh_pres_y = hp
 Lh_fb = vs * 0.1 - ((Lsm_presence - 1) / 9) * Lh_pres_y;
 Lh_env = Lh_env + (Lh_k_rel + (Lh_k_att - Lh_k_rel) * (dy * dy > Lh_env)) * (dy * dy - Lh_env);
 y = vs / 44.7;
+d_pa = y;
 // decimation filter
 ysec = Lh_dc_b0 * y + Lh_dc_b1 * Lh_d1x1 + Lh_dc_b2 * Lh_d1x2 - Lh_dc_a1 * Lh_d1y1 - Lh_dc_a2 * Lh_d1y2;
 Lh_d1x2 = Lh_d1x1; Lh_d1x1 = y; Lh_d1y2 = Lh_d1y1; Lh_d1y1 = ysec; y = ysec;
@@ -1101,6 +1109,7 @@ tb_b0 = 10.75904350110603 + tb_t2 * tb_b1 - tb_b2; tb_b2 = tb_b1; tb_b1 = tb_b0;
 tb_b0 = -1.900905351733022 + tb_t2 * tb_b1 - tb_b2; tb_b2 = tb_b1; tb_b1 = tb_b0;
 tb_b0 = -75.36048906741267 + tb_t2 * tb_b1 - tb_b2; tb_b2 = tb_b1; tb_b1 = tb_b0;
 xin = -3.9029844779071934 + tb_t * tb_b1 - tb_b2;
+d_v1a = xin;
 hpt = Lh_k_hp7 * (Lh_v1a_hpy + xin - Lh_v1a_hpx); Lh_v1a_hpx = xin; Lh_v1a_hpy = hpt; xin = hpt;
 // ---------- channel 1: bright/volume net -> V2A -> V2B cathode follower -> tone stack
 a = xin;
@@ -1278,6 +1287,7 @@ b = b * Lh_c2_volr;
 // ---------- channel relays, fx loop buffers (unity)
 pre = a + (b - a) * Lsm_chsel;
 hpt = Lh_k_hp15 * (Lh_fx_hpy + pre - Lh_fx_hpx); Lh_fx_hpx = pre; Lh_fx_hpy = hpt; pre = hpt;
+d_pre = pre;
 // ---------- power amp: V6 long-tail PI, 4x6L6GC push-pull, NFB with presence
 hpt = Lh_k_hp7 * (Lh_pi_hpy + pre - Lh_pi_hpx); Lh_pi_hpx = pre; Lh_pi_hpy = hpt; pre = hpt;
 pin = pre - Lh_fb;
@@ -1299,6 +1309,7 @@ hpt = Lh_k_pres * (Lh_pres_y + fbr - Lh_pres_x); Lh_pres_x = fbr; Lh_pres_y = hp
 Lh_fb = vs * 0.1 - ((Lsm_presence - 1) / 9) * Lh_pres_y;
 Lh_env = Lh_env + (Lh_k_rel + (Lh_k_att - Lh_k_rel) * (dy * dy > Lh_env)) * (dy * dy - Lh_env);
 y = vs / 44.7;
+d_pa = y;
 // decimation filter
 ysec = Lh_dc_b0 * y + Lh_dc_b1 * Lh_d1x1 + Lh_dc_b2 * Lh_d1x2 - Lh_dc_a1 * Lh_d1y1 - Lh_dc_a2 * Lh_d1y2;
 Lh_d1x2 = Lh_d1x1; Lh_d1x1 = y; Lh_d1y2 = Lh_d1y1; Lh_d1y1 = ysec; y = ysec;
@@ -1325,9 +1336,17 @@ ysec = Lh_cb7_b0 * y + Lh_cb7_b1 * Lh_cb7_x1 + Lh_cb7_b2 * Lh_cb7_x2 - Lh_cb7_a1
 Lh_cb7_x2 = Lh_cb7_x1; Lh_cb7_x1 = y; Lh_cb7_y2 = Lh_cb7_y1; Lh_cb7_y1 = ysec; y = ysec;
 Lh_cabfade = min(Lh_cabfade + 0.0005, 1);
 cg = Lh_cabgain * Lh_cabfade * (1 - Lsm_standby) * dbtoa(Lsm_p_output);
-y = fixnan(y * cg);
+y = y * cg;
+// ---------- debug taps / diagnostics
+Lh_nan = Lh_nan + isnan(y) + isnan(Lh_ts1_z1) + isnan(Lh_ts2_z1) + isnan(Lh_fb) + (abs(Lh_fb) > 1e9);
+Lh_dbgph = Lh_dbgph + 220 / samplerate; Lh_dbgph = Lh_dbgph - floor(Lh_dbgph);
+tp = floor(dbg_tap + 0.5);
+y = (tp == 0) * y + (tp == 1) * (in1 + in2) * 0.5 + (tp == 2) * 0.25 * sin(2 * pi * Lh_dbgph) + (tp == 3) * d_v1a / 50 + (tp == 4) * d_pre / 10 + (tp == 5) * d_pa;
+y = fixnan(clamp(y, -4, 4));
 out1 = y;
 out2 = y;
+out3 = Lh_nan;
+out4 = Lh_c1_div;
 h_init = fixnan(Lh_init);
 h_sr = fixnan(Lh_sr);
 h_xprev = fixnan(Lh_xprev);
@@ -1550,3 +1569,5 @@ h_cb7_x2 = fixnan(Lh_cb7_x2);
 h_cb7_y1 = fixnan(Lh_cb7_y1);
 h_cb7_y2 = fixnan(Lh_cb7_y2);
 h_cabgain = fixnan(Lh_cabgain);
+h_nan = fixnan(Lh_nan);
+h_dbgph = fixnan(Lh_dbgph);

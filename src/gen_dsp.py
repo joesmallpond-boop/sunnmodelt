@@ -213,7 +213,7 @@ PARAMS = [
     ("ch2_gain", 5.5, 1, 10), ("ch2_treble", 5.5, 1, 10), ("ch2_bass", 5.5, 1, 10), ("ch2_mid", 5.5, 1, 10),
     ("ch2_vol", 4, 1, 10),
     ("chsel", 1, 0, 1), ("presence", 3, 1, 10), ("standby", 0, 0, 1),
-    ("power", 1, 0, 1), ("cab", 1, 0, 7), ("p_output", -6, -36, 12),
+    ("power", 1, 0, 1), ("cab", 1, 0, 7), ("p_output", -6, -36, 12), ("dbg_tap", 0, 0, 5),
 ]
 SMOOTHED = ["p_input", "ch1_vol", "ch1_treble", "ch1_bass", "ch1_mid", "ch2_gain", "ch2_treble",
             "ch2_bass", "ch2_mid", "ch2_vol", "chsel", "presence", "standby", "power", "p_output"]
@@ -258,7 +258,7 @@ def generate():
        "h_k_v3b_b0", "h_k_v3b_b1", "h_k_v3b_a1")
     for i in range(NSEC):
         hv(*[f"h_cb{i}_{c}" for c in ("b0", "b1", "b2", "a1", "a2", "x1", "x2", "y1", "y2")])
-    hv("h_cabgain")
+    hv("h_cabgain", "h_nan", "h_dbgph")
     for n in H:
         L.append(f"History {n}(0);")
 
@@ -266,7 +266,7 @@ def generate():
     B = []
     B.append("iq = 0; vp0 = 0; x = 0; y = 0; i = 0; j = 0; lo = 0; hi = 0; ti = 0; vin = 0; vkk = 0; vg = 0; vpk = 0; vgk = 0;")
     B.append("kz = 0; ksp = 0; ke1 = 0; kip = 0; gx = 0; gsp = 0; lx = 0; li = 0; lf = 0; la = 0; lb = 0;")
-    B.append("tb_t = 0; tb_t2 = 0; tb_b0 = 0; tb_b1 = 0; tb_b2 = 0; hpt = 0; fot = 0; tsy = 0; bc1 = 0; bc2 = 0; bc3 = 0; fs2 = samplerate * 2; xin = 0;")
+    B.append("tp = 0; d_v1a = 0; d_pre = 0; d_pa = 0; tb_t = 0; tb_t2 = 0; tb_b0 = 0; tb_b1 = 0; tb_b2 = 0; hpt = 0; fot = 0; tsy = 0; bc1 = 0; bc2 = 0; bc3 = 0; fs2 = samplerate * 2; xin = 0;")
     B.append("a = 0; b = 0; pre = 0; pin = 0; vpi = 0; u = 0; pz = 0; psp = 0; pp = 0; sA = 0; sB = 0; pm = 0;")
     B.append("vs = 0; fbr = 0; yo = 0; dy = 0; vbias = 0; vfull = 0; sagamt = 0; sagf = 0; r1 = 0; r2 = 0; rth = 0;")
     B.append("pt = 0; pm1 = 0; pl = 0; tap = 0; wc = 0; cw = 0; sw = 0; al = 0; ga = 0; a0 = 0; ysec = 0; cb = 0; cg = 0;")
@@ -383,6 +383,7 @@ def generate():
     B.append("// V1A: 68k grid stopper + Miller C")
     B.append(onepole_lp("xin", "h_lp_in", "h_k_in"))
     B.append(lookup("v1a", "xin", 8.0))
+    B.append("d_v1a = xin;")
     B.append(onepole_hp("xin", "h_v1a_hpx", "h_v1a_hpy", "h_k_hp7"))
     B.append("// ---------- channel 1: bright/volume net -> V2A -> V2B cathode follower -> tone stack")
     B.append("a = xin;")
@@ -412,6 +413,7 @@ def generate():
     B.append("// ---------- channel relays, fx loop buffers (unity)")
     B.append("pre = a + (b - a) * sm_chsel;")
     B.append(onepole_hp("pre", "h_fx_hpx", "h_fx_hpy", "h_k_hp15"))
+    B.append("d_pre = pre;")
     B.append("// ---------- power amp: V6 long-tail PI, 4x6L6GC push-pull, NFB with presence")
     B.append(onepole_hp("pre", "h_pi_hpx", "h_pi_hpy", "h_k_hp7"))
     B.append("pin = pre - h_fb;")
@@ -433,6 +435,7 @@ def generate():
     B.append("h_fb = vs * 0.1 - ((sm_presence - 1) / 9) * h_pres_y;")
     B.append("h_env = h_env + (h_k_rel + (h_k_att - h_k_rel) * (dy * dy > h_env)) * (dy * dy - h_env);")
     B.append("y = vs / 44.7;")
+    B.append("d_pa = y;")
     B.append("// decimation filter")
     B.append("ysec = h_dc_b0 * y + h_dc_b1 * h_d1x1 + h_dc_b2 * h_d1x2 - h_dc_a1 * h_d1y1 - h_dc_a2 * h_d1y2;")
     B.append("h_d1x2 = h_d1x1; h_d1x1 = y; h_d1y2 = h_d1y1; h_d1y1 = ysec; y = ysec;")
@@ -455,9 +458,17 @@ def generate():
         B.append(f"h_cb{si}_x2 = h_cb{si}_x1; h_cb{si}_x1 = y; h_cb{si}_y2 = h_cb{si}_y1; h_cb{si}_y1 = ysec; y = ysec;")
     B.append("h_cabfade = min(h_cabfade + 0.0005, 1);")
     B.append("cg = h_cabgain * h_cabfade * (1 - sm_standby) * dbtoa(sm_p_output);")
-    B.append("y = fixnan(y * cg);")
+    B.append("y = y * cg;")
+    B.append("// ---------- debug taps / diagnostics")
+    B.append("h_nan = h_nan + isnan(y) + isnan(h_ts1_z1) + isnan(h_ts2_z1) + isnan(h_fb) + (abs(h_fb) > 1e9);")
+    B.append("h_dbgph = h_dbgph + 220 / samplerate; h_dbgph = h_dbgph - floor(h_dbgph);")
+    B.append("tp = floor(dbg_tap + 0.5);")
+    B.append("y = (tp == 0) * y + (tp == 1) * (in1 + in2) * 0.5 + (tp == 2) * 0.25 * sin(2 * pi * h_dbgph) + (tp == 3) * d_v1a / 50 + (tp == 4) * d_pre / 10 + (tp == 5) * d_pa;")
+    B.append("y = fixnan(clamp(y, -4, 4));")
     B.append("out1 = y;")
     B.append("out2 = y;")
+    B.append("out3 = h_nan;")
+    B.append("out4 = h_c1_div;")
     # Work on local copies of every History inside the sample, write them back once at the end.
     # This makes the code independent of when gen~ commits History writes, and keeps all
     # History writes at top level (never inside an if or a loop). fixnan stops a NaN from
