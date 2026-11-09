@@ -2,7 +2,8 @@
 import json, math, random, struct, sys
 from gen_dsp import generate, CAB_NAMES
 
-W, H = 1060, 169
+from gen_dsp import DEBUG
+W, H = (1190 if DEBUG else 930), 169
 DBG_X = 930
 random.seed(7)
 
@@ -131,10 +132,14 @@ oval(702, KY - 8, 718, KY + 8, (60, 10, 10))
 RX = AMP_R + 4
 rect(AMP_R, 0, W, H, (16, 16, 17))
 rect(RX, 2, DBG_X - 2, H - 2, (44, 44, 46))
-rect(DBG_X + 2, 2, W - 2, H - 2, (60, 30, 30))
-text(DBG_X + 10, 15, "DEBUG", (240, 200, 200), 10, "bold")
-text(DBG_X + 10, 48, "nan count", (220, 220, 220), 8)
-text(DBG_X + 10, 133, "stack 2 (expect -2.87 to -2.88)", (220, 220, 220), 8)
+if DEBUG:
+  rect(DBG_X + 2, 2, W - 2, H - 2, (60, 30, 30))
+  text(DBG_X + 10, 15, "DEBUG", (240, 200, 200), 10, "bold")
+  text(DBG_X + 92, 15, "nan", (220, 220, 220), 8)
+for _k, _lab in [] if not DEBUG else enumerate(["a1 -2.89", "knob 5.5", "pt .300", "pm1 .500", "pl .100", "fs2 88.2k/96k", "sa0 -.727", "sa1 -4.30",
+                           "sa2 -3.49", "sa3 -.347", "A0 -2.0/-2.6", "A1 5.8/7.5"]):
+    _c, _r = _k // 6, _k % 6
+    text(DBG_X + 6 + _c * 126, 54 + _r * 20, _lab, (225, 225, 225), 7)
 for (yy) in (8, H - 12):  # rack screws
     for xx in (RX + 6, DBG_X - 12):
         oval(xx, yy, xx + 6, yy + 6, (110, 110, 112))
@@ -158,6 +163,7 @@ def wire(a, ao, b, bi):
     lines.append({"patchline": {"source": [a, ao], "destination": [b, bi]}})
 
 # gen~
+NOUT = 15 if DEBUG else 2
 code = generate()
 gen_patcher = {
     "fileversion": 1,
@@ -175,27 +181,23 @@ gen_patcher = {
         {"box": {"id": "obj-2", "maxclass": "newobj", "text": "in 2", "numinlets": 0, "numoutlets": 1,
                  "outlettype": [""], "patching_rect": [300, 20, 30, 22]}},
         {"box": {"id": "obj-3", "maxclass": "codebox", "code": code, "fontface": 0,
-                 "fontname": "<Monospaced>", "fontsize": 12.0, "numinlets": 2, "numoutlets": 5,
-                 "outlettype": ["", "", "", "", ""], "patching_rect": [20, 60, 760, 560]}},
-        {"box": {"id": "obj-6", "maxclass": "newobj", "text": "out 3", "numinlets": 1, "numoutlets": 0,
-                 "patching_rect": [300, 640, 37, 22]}},
-        {"box": {"id": "obj-7", "maxclass": "newobj", "text": "out 4", "numinlets": 1, "numoutlets": 0,
-                 "patching_rect": [500, 640, 37, 22]}},
-        {"box": {"id": "obj-8", "maxclass": "newobj", "text": "out 5", "numinlets": 1, "numoutlets": 0,
-                 "patching_rect": [600, 640, 37, 22]}},
+                 "fontname": "<Monospaced>", "fontsize": 12.0, "numinlets": 2, "numoutlets": NOUT,
+                 "outlettype": [""] * NOUT, "patching_rect": [20, 60, 760, 560]}},
         {"box": {"id": "obj-4", "maxclass": "newobj", "text": "out 1", "numinlets": 1, "numoutlets": 0,
-                 "patching_rect": [20, 640, 37, 22]}},
+                 "patching_rect": [20, 700, 37, 22]}},
         {"box": {"id": "obj-5", "maxclass": "newobj", "text": "out 2", "numinlets": 1, "numoutlets": 0,
-                 "patching_rect": [740, 640, 37, 22]}},
+                 "patching_rect": [740, 700, 37, 22]}},
+    ] + [{"box": {"id": f"obj-{6 + k}", "maxclass": "newobj", "text": f"out {3 + k}", "numinlets": 1, "numoutlets": 0,
+                 "patching_rect": [20 + 50 * k, 640, 40, 22]}} for k in range(NOUT - 2)
+    ] + [
     ],
     "lines": [
         {"patchline": {"source": ["obj-1", 0], "destination": ["obj-3", 0]}},
         {"patchline": {"source": ["obj-2", 0], "destination": ["obj-3", 1]}},
         {"patchline": {"source": ["obj-3", 0], "destination": ["obj-4", 0]}},
         {"patchline": {"source": ["obj-3", 1], "destination": ["obj-5", 0]}},
-        {"patchline": {"source": ["obj-3", 2], "destination": ["obj-6", 0]}},
-        {"patchline": {"source": ["obj-3", 3], "destination": ["obj-7", 0]}},
-        {"patchline": {"source": ["obj-3", 4], "destination": ["obj-8", 0]}},
+    ] + [{"patchline": {"source": ["obj-3", 2 + k], "destination": [f"obj-{6 + k}", 0]}} for k in range(NOUT - 2)
+    ] + [
     ],
 }
 
@@ -204,7 +206,7 @@ lcd = box(maxclass="lcd", numinlets=1, numoutlets=4, outlettype=["list", "list",
           background=1, ignoreclick=1, border=0, local=1, bgcolor=[0.086, 0.086, 0.09, 1.0])
 plugin = box(maxclass="newobj", text="plugin~", numinlets=2, numoutlets=2, outlettype=["signal", "signal"],
              patching_rect=[30, 420, 60, 22])
-gen = box(maxclass="newobj", text="gen~", numinlets=2, numoutlets=5, outlettype=["signal", "signal", "signal", "signal", "signal"],
+gen = box(maxclass="newobj", text="gen~", numinlets=2, numoutlets=NOUT, outlettype=["signal"] * NOUT,
           patching_rect=[30, 520, 300, 22], patcher=gen_patcher)
 plugout = box(maxclass="newobj", text="plugout~", numinlets=2, numoutlets=0, patching_rect=[30, 600, 60, 22])
 wire(plugin, 0, gen, 0); wire(plugin, 1, gen, 1)
@@ -310,24 +312,26 @@ pw = box(maxclass="live.tab", numinlets=1, numoutlets=3, outlettype=["", "", "fl
          varname="power", saved_attribute_attributes=enum_vo("Output Power", "Power", ["Club 25W", "Arena 100W"], 1))
 to_gen(pw, "power")
 # debug tap + readouts
-dbg = box(maxclass="live.menu", numinlets=1, numoutlets=3, outlettype=["", "", "float"], parameter_enable=1,
-          patching_rect=[px[0], 200, 120, 15], presentation=1, presentation_rect=[DBG_X + 10, 21, W - DBG_X - 20, 16],
-          varname="dbg_tap", saved_attribute_attributes=enum_vo("Debug Tap", "Tap",
-          ["Full amp", "Dry input", "Test tone", "After V1A", "Preamp out", "Power amp out", "Before cab"], 0))
-to_gen(dbg, "dbg_tap")
-probe = box(maxclass="live.menu", numinlets=1, numoutlets=3, outlettype=["", "", "float"], parameter_enable=1,
-          patching_rect=[px[0] + 150, 200, 120, 15], presentation=1, presentation_rect=[DBG_X + 10, 75, W - DBG_X - 20, 16],
-          varname="probe", saved_attribute_attributes=enum_vo("Debug Probe", "Probe",
-          ["a1 (-2.89)", "treble knob (5.5)", "pt (0.300)", "pm1 (0.500)", "pl (0.100)", "fs2 (88200/96000)",
-           "sa0 (-0.727)", "sa1 (-4.30)", "sa2 (-3.49)", "sa3 (-0.347)", "A0 (-2.01/-2.59)", "A1 (5.82/7.50)"], 0))
-to_gen(probe, "probe")
-for k, yy in ((2, 51), (3, 94), (4, 137)):
-    sn = box(maxclass="newobj", text="snapshot~ 200", numinlets=2, numoutlets=1, outlettype=["float"],
-             patching_rect=[30 + k * 120, 700, 90, 22])
-    fl = box(maxclass="flonum", numinlets=1, numoutlets=2, outlettype=["", "bang"], format=6,
-             patching_rect=[30 + k * 120, 730, 80, 22], presentation=1,
-             presentation_rect=[DBG_X + 10, yy, W - DBG_X - 20, 18], fontsize=11.0, ignoreclick=1)
-    wire(gen, k, sn, 0); wire(sn, 0, fl, 0)
+if DEBUG:
+    dbg = box(maxclass="live.menu", numinlets=1, numoutlets=3, outlettype=["", "", "float"], parameter_enable=1,
+              patching_rect=[px[0], 200, 120, 15], presentation=1, presentation_rect=[DBG_X + 6, 21, 120, 16],
+              varname="dbg_tap", saved_attribute_attributes=enum_vo("Debug Tap", "Tap",
+              ["Full amp", "Dry input", "Test tone", "After V1A", "Preamp out", "Power amp out", "Before cab"], 0))
+    to_gen(dbg, "dbg_tap")
+    PLAB = ["a1 -2.89", "trebKnob 5.5", "pt .300", "pm1 .500", "pl .100", "fs2 88200/96k", "sa0 -.727", "sa1 -4.30",
+            "sa2 -3.49", "sa3 -.347", "A0 -2.01/-2.59", "A1 5.82/7.50"]
+    for k in range(13):
+        if k == 0:
+            rect_ = [DBG_X + 130, 3, 118, 16]
+        else:
+            col, row = (k - 1) // 6, (k - 1) % 6
+            rect_ = [DBG_X + 6 + col * 126 + 58, 42 + row * 20, 62, 17]
+        sn = box(maxclass="newobj", text="snapshot~ 200", numinlets=2, numoutlets=1, outlettype=["float"],
+                 patching_rect=[30 + k * 100, 700, 90, 22])
+        fl = box(maxclass="flonum", numinlets=1, numoutlets=2, outlettype=["", "bang"], format=6,
+                 patching_rect=[30 + k * 100, 730, 80, 22], presentation=1,
+                 presentation_rect=rect_, fontsize=9.0, ignoreclick=1)
+        wire(gen, 2 + k, sn, 0); wire(sn, 0, fl, 0)
 # input / output trims (Live style)
 dial("p_input", "Input", "Input", [RX + 14, 100, 60, 56], -24, 24, 0.0, unit=4, show=True)
 dial("p_output", "Output", "Output", [RX + 94, 100, 60, 56], -36, 12, -6.0, unit=4, show=True)

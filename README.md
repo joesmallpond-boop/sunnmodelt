@@ -4,7 +4,7 @@ A Max for Live audio effect modelled from the Sunn Model T (1997 Fender reissue)
 
 ![panel](docs/panel-preview.png)
 
-**Install:** drop `T-100 Amp.amxd` onto an audio track in Live (needs Live Suite or Max for Live). It's mono in and dual-mono out.
+**Install:** drop `T-100.amxd` onto an audio track in Live (needs Live Suite or Max for Live). It's mono in and dual-mono out.
 
 ## Front panel (same layout as the amp)
 
@@ -36,12 +36,19 @@ Knobs read 1–10 like the real amp, where 5½ is half rotation. Pot tapers foll
 
 **Approximations:** the FX loop is treated as unity, which is what the factory loop trims are set for. The cabs are EQ-curve models fitted to typical close-mic responses for each speaker type, not measured impulse responses.
 
+## gen~ gotchas (learned the hard way)
+
+The generated gen~ code avoids things gen~ handles differently from C. With any of these, the device compiles but clicks or stays silent:
+- **`samplerate` is an integer in gen~.** Arithmetic that stems from it stays integer, so `(2·fs)²` overflowed 32 bits and wrecked the tone-stack/NFB filters. All sample-rate maths now goes through a float (`srf = samplerate * h_one`).
+- **No loops.** gen~ bails out of long loops, so the tube curves are pre-fitted formulas rather than tables built at load.
+- **No `if` blocks and no scientific-notation literals.** Coefficients are recomputed every sample.
+
 ## Rebuilding
 
 ```
 pip install sympy numpy scipy
 python3 src/fitcab.py            # (optional) refit cab curves -> src/cabs.json
-python3 src/build_amxd.py "T-100 Amp.amxd"
+python3 src/build_amxd.py "T-100.amxd"   # T100_DEBUG=1 adds a debug/probe panel
 ```
 
 `src/t100.genexpr` is the generated gen~ code. To test it offline, compile it as C (`tests/to_c.py`) and run the checks in `tests/` (`run.py`, `t2.py`, `t3.py`).

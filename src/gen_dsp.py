@@ -4,6 +4,8 @@ Circuit values come from the Fender/Sunn Model T service schematics (sheets 1 & 
 """
 import math
 import re as _re2
+import os as _os
+DEBUG = _os.environ.get("T100_DEBUG") == "1"
 import sympy as sp
 from tonestack import derive, s, t, m, l
 
@@ -266,8 +268,10 @@ PARAMS = [
     ("ch2_gain", 5.5, 1, 10), ("ch2_treble", 5.5, 1, 10), ("ch2_bass", 5.5, 1, 10), ("ch2_mid", 5.5, 1, 10),
     ("ch2_vol", 4, 1, 10),
     ("chsel", 1, 0, 1), ("presence", 3, 1, 10), ("standby", 0, 0, 1),
-    ("power", 1, 0, 1), ("cab", 1, 0, 7), ("p_output", -6, -36, 12), ("dbg_tap", 0, 0, 6), ("probe", 0, 0, 11),
+    ("power", 1, 0, 1), ("cab", 1, 0, 7), ("p_output", -6, -36, 12),
 ]
+if DEBUG:
+    PARAMS.append(("dbg_tap", 0, 0, 6))
 SMOOTHED = ["p_input", "ch1_vol", "ch1_treble", "ch1_bass", "ch1_mid", "ch2_gain", "ch2_treble",
             "ch2_bass", "ch2_mid", "ch2_vol", "chsel", "presence", "standby", "power", "p_output"]
 
@@ -314,6 +318,7 @@ def generate():
     hv("h_cabgain", "h_nan", "h_dbgph")
     for n in H:
         L.append(f"History {n}(0);")
+    L.append("History h_one(1);   // float 1.0 - gen types samplerate as an integer, so all samplerate maths goes through this")
 
     # ---------------- body
     B = []
@@ -505,18 +510,21 @@ def generate():
     B.append("h_cabfade = min(h_cabfade + 0.0005, 1);")
     B.append("cg = h_cabgain * h_cabfade * (1 - sm_standby) * dbtoa(sm_p_output);")
     B.append("y = y * cg;")
-    B.append("// ---------- debug taps / diagnostics")
-    B.append("h_nan = h_nan + isnan(y) + isnan(h_ts1_z1) + isnan(h_ts2_z1) + isnan(h_fb) + (abs(h_fb) > 1e9);")
-    B.append("h_dbgph = h_dbgph + 220 / samplerate; h_dbgph = h_dbgph - floor(h_dbgph);")
-    B.append("tp = floor(dbg_tap + 0.5);")
-    B.append("y = (tp == 0) * y + (tp == 1) * (in1 + in2) * 0.5 + (tp == 2) * 0.25 * sin(2 * pi * h_dbgph) + (tp == 3) * d_v1a / 50 + (tp == 4) * d_pre / 10 + (tp == 5) * d_pa + (tp == 6) * d_yo;")
+    if DEBUG:
+      B.append("// ---------- debug taps / diagnostics")
+      B.append("h_nan = h_nan + isnan(y) + isnan(h_ts1_z1) + isnan(h_ts2_z1) + isnan(h_fb) + (abs(h_fb) > 1e9);")
+      B.append("h_dbgph = h_dbgph + 220 / samplerate; h_dbgph = h_dbgph - floor(h_dbgph);")
+      B.append("tp = floor(dbg_tap + 0.5);")
+      B.append("y = (tp == 0) * y + (tp == 1) * (in1 + in2) * 0.5 + (tp == 2) * 0.25 * sin(2 * pi * h_dbgph) + (tp == 3) * d_v1a / 50 + (tp == 4) * d_pre / 10 + (tp == 5) * d_pa + (tp == 6) * d_yo;")
     B.append("y = fixnan(clamp(y, -4, 4));")
     B.append("out1 = y;")
     B.append("out2 = y;")
-    B.append("out3 = h_nan;")
-    B.append("pr = floor(probe + 0.5);")
-    B.append("out4 = (pr == 0) * h_ts1_a1 + (pr == 1) * dp_kn + (pr == 2) * dp_pt + (pr == 3) * dp_pm + (pr == 4) * dp_pl + (pr == 5) * fs2 + (pr == 6) * dp_sa0 + (pr == 7) * dp_sa1 * 1000 + (pr == 8) * dp_sa2 * 1000000 + (pr == 9) * dp_sa3 * 1000000000 + (pr == 10) * dp_A0 / 1000000 + (pr == 11) * dp_A1 / 1000000;")
-    B.append("out5 = h_ts2_a1;")
+    PROBES = ["h_ts1_a1", "dp_kn", "dp_pt", "dp_pm", "dp_pl", "fs2", "dp_sa0", "dp_sa1 * 1000", "dp_sa2 * 1000000",
+              "dp_sa3 * 1000000000", "dp_A0 / 1000000", "dp_A1 / 1000000"]
+    if DEBUG:
+        B.append("out3 = h_nan;")
+        for k, e in enumerate(PROBES):
+            B.append(f"out{4 + k} = {e};")
     B.insert(0, " ".join(f"{v} = 0;" for v in sorted(_TAC_VARS)) + " qt = 0;")
     # Work on local copies of every History inside the sample, write them back once at the end.
     # This makes the code independent of when gen~ commits History writes, and keeps all
@@ -524,6 +532,9 @@ def generate():
     # ever latching into the filter state.
     import re as _re
     body = "\n".join(B)
+    body = _re.sub(r"\bsamplerate\b", "srf", body)
+    body = "srf = samplerate * h_one;\n" + body
+    H.append("h_one")
     hs = set(H)
     pat = _re.compile(r"\b(\w+)\b")
     body = pat.sub(lambda mm: ("L" + mm.group(1)) if mm.group(1) in hs else mm.group(1), body)
