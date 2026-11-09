@@ -20,6 +20,7 @@ c='''#include <stdio.h>
 #define dbtoa(x) pow(10.0,(x)/20.0)
 #define abs fabs
 #define min fmin
+#define fixnan(x) (isnan(x)?0.0:(x))
 #define max fmax
 #define pi 3.14159265358979323846
 double samplerate=48000;

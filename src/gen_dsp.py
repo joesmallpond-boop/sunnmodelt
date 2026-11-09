@@ -455,10 +455,21 @@ def generate():
         B.append(f"h_cb{si}_x2 = h_cb{si}_x1; h_cb{si}_x1 = y; h_cb{si}_y2 = h_cb{si}_y1; h_cb{si}_y1 = ysec; y = ysec;")
     B.append("h_cabfade = min(h_cabfade + 0.0005, 1);")
     B.append("cg = h_cabgain * h_cabfade * (1 - sm_standby) * dbtoa(sm_p_output);")
-    B.append("y = y * cg;")
+    B.append("y = fixnan(y * cg);")
     B.append("out1 = y;")
     B.append("out2 = y;")
-    return "\n".join(L) + "\n\n" + "\n".join(B) + "\n"
+    # Work on local copies of every History inside the sample, write them back once at the end.
+    # This makes the code independent of when gen~ commits History writes, and keeps all
+    # History writes at top level (never inside an if or a loop). fixnan stops a NaN from
+    # ever latching into the filter state.
+    import re as _re
+    body = "\n".join(B)
+    hs = set(H)
+    pat = _re.compile(r"\b(\w+)\b")
+    body = pat.sub(lambda mm: ("L" + mm.group(1)) if mm.group(1) in hs else mm.group(1), body)
+    pre = ["L" + n + " = " + n + ";" for n in H]
+    post = [n + " = fixnan(L" + n + ");" for n in H]
+    return "\n".join(L) + "\n\n" + "\n".join(pre) + "\n" + body + "\n" + "\n".join(post) + "\n"
 
 if __name__ == "__main__":
     code = generate()
