@@ -181,6 +181,23 @@ for (i = 0; i < {TN}; i = i + 1) {{
 h_{name}_q = peek(tb_{name}, {TN // 2});
 """
 
+def nfb_coeff_code():
+    from tonestack import derive_nfb
+    num, den, Rp = derive_nfb()
+    nc = num.all_coeffs()[::-1]; dc = den.all_coeffs()[::-1]
+    nc += [0] * (3 - len(nc)); dc += [0] * (3 - len(dc))
+    scale = float(sp.Abs(dc[0].subs(Rp, 10000.0)))
+    out = [f"rp = 25000 * ((pow(5.444, 1 - (sm_presence - 1) / 9) - 1) / 4.444) + 10;   // 30C reverse taper, max presence = 0 ohm"]
+    for i, c in enumerate(nc):
+        out.append(f"nf_n{i} = {sp.ccode(sp.horner(sp.expand(c / scale)).subs(Rp, sp.Symbol('rp'))) if c != 0 else 0};")
+    for i, c in enumerate(dc):
+        out.append(f"nf_d{i} = {sp.ccode(sp.horner(sp.expand(c / scale)).subs(Rp, sp.Symbol('rp'))) if c != 0 else 0};")
+    out.append("bc1 = 2 * fs2; bc2 = bc1 * bc1;")
+    out.append("ca0 = nf_d0 + nf_d1 * bc1 + nf_d2 * bc2;")
+    out.append("h_nf_b0 = (nf_n0 + nf_n1 * bc1 + nf_n2 * bc2) / ca0; h_nf_b1 = (2 * nf_n0 - 2 * nf_n2 * bc2) / ca0; h_nf_b2 = (nf_n0 - nf_n1 * bc1 + nf_n2 * bc2) / ca0;")
+    out.append("h_nf_a1 = (2 * nf_d0 - 2 * nf_d2 * bc2) / ca0; h_nf_a2 = (nf_d0 - nf_d1 * bc1 + nf_d2 * bc2) / ca0;")
+    return "\n".join(out)
+
 def lookup(name, x, vmax):
     from tubefit import stage_code
     return stage_code([st for st in STAGES if st[0] == name][0], x)
@@ -243,13 +260,13 @@ def generate():
            f"h_{nm}_z1", f"h_{nm}_z2", f"h_{nm}_z3", f"h_{nm}_ut", f"h_{nm}_um", f"h_{nm}_ul")
     # filter states
     hv("h_lp_in", "h_v1a_hpx", "h_v1a_hpy",
-       "h_c1_vx", "h_c1_vy", "h_c1_vb0", "h_c1_vb1", "h_c1_va1", "h_c1_div", "h_c1_mill", "h_c1_lp", "h_c1_used",
+       "h_c1_vz1", "h_c1_vz2", "h_c1_vb0", "h_c1_vb1", "h_c1_vb2", "h_c1_va1", "h_c1_va2", "h_c1_div", "h_c1_mill", "h_c1_lp", "h_c1_used",
        "h_v2a_sx", "h_v2a_sy",
        "h_c2_gdiv", "h_c2_mill", "h_c2_lp", "h_c2_used", "h_v1b_sx", "h_v1b_sy",
        "h_v1b_hpx", "h_v1b_hpy", "h_n1x", "h_n1y", "h_v3a_hpx", "h_v3a_hpy", "h_n2x", "h_n2y",
        "h_v3b_sx", "h_v3b_sy", "h_c16", "h_c2_volr",
        "h_fx_hpx", "h_fx_hpy", "h_pi_hpx", "h_pi_hpy", "h_pg_hpx", "h_pg_hpy",
-       "h_ot_hpx", "h_ot_hpy", "h_ot_lp", "h_pres_x", "h_pres_y",
+       "h_ot_hpx", "h_ot_hpy", "h_ot_lp", "h_nf_z1", "h_nf_z2", "h_nf_b0", "h_nf_b1", "h_nf_b2", "h_nf_a1", "h_nf_a2",
        "h_d1x1", "h_d1x2", "h_d1y1", "h_d1y2", "h_d2x1", "h_d2x2", "h_d2y1", "h_d2y2",
        "h_dc_b0", "h_dc_b1", "h_dc_b2", "h_dc_a1", "h_dc_a2", "h_dc2_b0", "h_dc2_b1", "h_dc2_b2", "h_dc2_a1", "h_dc2_a2",
        "h_k_in", "h_k_v1b_sh", "h_k_c2a", "h_k_c2b", "h_k_c2c", "h_k_v2a_sh", "h_k_v3b_sh",
@@ -267,7 +284,7 @@ def generate():
     B = []
     B.append("iq = 0; vp0 = 0; x = 0; y = 0; i = 0; j = 0; lo = 0; hi = 0; ti = 0; vin = 0; vkk = 0; vg = 0; vpk = 0; vgk = 0;")
     B.append("kz = 0; ksp = 0; ke1 = 0; kip = 0; gx = 0; gsp = 0; lx = 0; li = 0; lf = 0; la = 0; lb = 0;")
-    B.append("cchg = 0; d_yo = 0; ctp = 0; cf = 0; cq = 0; cgd = 0; ihp = 0; ilp = 0; ipk = 0; ioff = 0; tp = 0; d_v1a = 0; d_pre = 0; d_pa = 0; tb_t = 0; tb_t2 = 0; tb_b0 = 0; tb_b1 = 0; tb_b2 = 0; hpt = 0; fot = 0; tsy = 0; bc1 = 0; bc2 = 0; bc3 = 0; fs2 = samplerate * 2; xin = 0;")
+    B.append("rp = 0; nf_n0 = 0; nf_n1 = 0; nf_n2 = 0; nf_d0 = 0; nf_d1 = 0; nf_d2 = 0; ctau = 0; cn1 = 0; cn2 = 0; cd1 = 0; cd2 = 0; ca0 = 0; cchg = 0; d_yo = 0; ctp = 0; cf = 0; cq = 0; cgd = 0; ihp = 0; ilp = 0; ipk = 0; ioff = 0; tp = 0; d_v1a = 0; d_pre = 0; d_pa = 0; tb_t = 0; tb_t2 = 0; tb_b0 = 0; tb_b1 = 0; tb_b2 = 0; hpt = 0; fot = 0; tsy = 0; bc1 = 0; bc2 = 0; bc3 = 0; fs2 = samplerate * 2; xin = 0;")
     B.append("a = 0; b = 0; pre = 0; pin = 0; vpi = 0; u = 0; pz = 0; psp = 0; pp = 0; sA = 0; sB = 0; pm = 0;")
     B.append("vs = 0; fbr = 0; yo = 0; dy = 0; vbias = 0; vfull = 0; sagamt = 0; sagf = 0; r1 = 0; r2 = 0; rth = 0;")
     B.append("pt = 0; pm1 = 0; pl = 0; tap = 0; wc = 0; cw = 0; sw = 0; al = 0; ga = 0; a0 = 0; ysec = 0; cb = 0; cg = 0;")
@@ -308,17 +325,21 @@ def generate():
     def aud(p, a):
         return f"((pow({a!r}, {p}) - 1) / {a - 1!r})"
     A30, A15, A10 = 5.444, 32.11, 81.0
-    # ch1 volume network (R6 1M 10A, bright cap C4 .0022u, R7/R8 470k) - matches TP2->TP4 level at vol 3
-
+    # ch1 input/volume network (service manual): C3 470p || C4 .0022u in series into R6 1M 10A volume,
+    # C5 .001u || C6 .0047u bright caps across the top of the pot, wiper loaded by R7 + R8 (940k),
+    # output at the R7/R8 470k divider. Source = V1A plate (~34k).
     B.append("h_c1_used = sm_ch1_vol;")
     B.append(f"tap = clamp({aud('(sm_ch1_vol - 1) / 9', A10)}, 0.0005, 0.9995);")
     B.append("r1 = (1 - tap) * 1000000; r2 = tap * 1000000; r2 = r2 * 940000 / (r2 + 940000);")
     B.append("rth = r1 * r2 / (r1 + r2);")
-    B.append("bc1 = 2 * fs2;")
-    B.append("h_c1_vb0 = (r2 + r2 * r1 * 2.2e-9 * bc1) / ((r1 + r2) + r2 * r1 * 2.2e-9 * bc1);")
-    B.append("h_c1_vb1 = (r2 - r2 * r1 * 2.2e-9 * bc1) / ((r1 + r2) + r2 * r1 * 2.2e-9 * bc1);")
-    B.append("h_c1_va1 = ((r1 + r2) - r2 * r1 * 2.2e-9 * bc1) / ((r1 + r2) + r2 * r1 * 2.2e-9 * bc1);")
-    B.append("h_c1_div = 470000 / (940000 + rth);")
+    B.append("bc1 = 2 * fs2; bc2 = bc1 * bc1;")
+    B.append("ctau = r1 * 5.7e-9;")
+    B.append("cn1 = r2 * 2.67e-9; cn2 = r2 * 2.67e-9 * ctau;")
+    B.append("cd1 = (34000 + r2) * 2.67e-9 + ctau + r1 * 2.67e-9; cd2 = (34000 + r2) * 2.67e-9 * ctau;")
+    B.append("ca0 = 1 + cd1 * bc1 + cd2 * bc2;")
+    B.append("h_c1_vb0 = (cn1 * bc1 + cn2 * bc2) / ca0; h_c1_vb1 = (-2 * cn2 * bc2) / ca0; h_c1_vb2 = (-cn1 * bc1 + cn2 * bc2) / ca0;")
+    B.append("h_c1_va1 = (2 - 2 * cd2 * bc2) / ca0; h_c1_va2 = (1 - cd1 * bc1 + cd2 * bc2) / ca0;")
+    B.append("h_c1_div = 0.5;")
     B.append("h_c1_mill = 1 - exp(-2 * pi / (2 * pi * ((rth + 470000) * 470000 / (rth + 940000) + 10000) * 1.1e-10) / fs2);")
     # ch2 gain (R17 220k + R18 250k 15A) and volume (R39 220k + R40 250k 30A)
 
@@ -339,6 +360,8 @@ def generate():
         B.append(f"pl = clamp({aud(f'(sm_{pl_} - 1) / 9', ab)}, 0.002, 0.998);")
         B.append(stack_coeff_code(nm, "pt", "pm1", "pl"))
 
+    # NFB network: R107 150k || C41 .0047u -> R108 47k -> R109 4.7k || (C43 .1u + R110 25k 30C presence)
+    B.append(nfb_coeff_code())
     # cabinet coefficients (base rate)
     B.append("cb = floor(clamp(cab, 0, 7) + 0.5);")
     # flat (no nested ifs): pick each section's settings arithmetically, then one generic RBJ design
@@ -374,7 +397,7 @@ def generate():
     B.append(onepole_hp("xin", "h_v1a_hpx", "h_v1a_hpy", "h_k_hp7"))
     B.append("// ---------- channel 1: bright/volume net -> V2A -> V2B cathode follower -> tone stack")
     B.append("a = xin;")
-    B.append(first_order("a", "h_c1_vb0", "h_c1_vb1", "h_c1_va1", "h_c1_vx", "h_c1_vy"))
+    B.append("fot = h_c1_vb0 * a + h_c1_vz1; h_c1_vz1 = h_c1_vb1 * a - h_c1_va1 * fot + h_c1_vz2; h_c1_vz2 = h_c1_vb2 * a - h_c1_va2 * fot; a = fot;")
     B.append("a = a * h_c1_div;")
     B.append(onepole_lp("a", "h_c1_lp", "h_c1_mill"))
     B.append(first_order("a", "h_k_v2a_b0", "h_k_v2a_b1", "h_k_v2a_a1", "h_v2a_sx", "h_v2a_sy"))
@@ -404,7 +427,7 @@ def generate():
     B.append("// ---------- power amp: V6 long-tail PI, 4x6L6GC push-pull, NFB with presence")
     B.append(onepole_hp("pre", "h_pi_hpx", "h_pi_hpy", "h_k_hp7"))
     B.append("pin = pre - h_fb;")
-    B.append("vpi = 70 * tanh(clamp(27 * pin / 70, -20, 20));")
+    B.append("vpi = 70 * tanh(clamp(23 * pin / 70, -20, 20));   // PI gain from TP26/TP27/TP52")
     B.append(onepole_hp("vpi", "h_pg_hpx", "h_pg_hpy", "h_k_hp34"))
     B.append("u = vpi / vbias;")
     B.append("sagf = 1 - sagamt * min(sqrt(h_env), 1);")
@@ -417,9 +440,8 @@ def generate():
     B.append(onepole_hp("dy", "h_ot_hpx", "h_ot_hpy", "h_k_hp30"))
     B.append(onepole_lp("dy", "h_ot_lp", "h_k_lpot"))
     B.append("vs = dy * vfull;")
-    B.append("fbr = vs * 0.1;")
-    B.append(onepole_hp("fbr", "h_pres_x", "h_pres_y", "h_k_pres"))
-    B.append("h_fb = vs * 0.1 - ((sm_presence - 1) / 9) * h_pres_y;")
+    B.append("fbr = h_nf_b0 * vs + h_nf_z1; h_nf_z1 = h_nf_b1 * vs - h_nf_a1 * fbr + h_nf_z2; h_nf_z2 = h_nf_b2 * vs - h_nf_a2 * fbr;")
+    B.append("h_fb = fbr;")
     B.append("h_env = h_env + (h_k_rel + (h_k_att - h_k_rel) * (dy * dy > h_env)) * (dy * dy - h_env);")
     B.append("y = vs / 44.7;")
     B.append("d_pa = y;")

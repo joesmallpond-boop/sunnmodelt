@@ -134,8 +134,8 @@ rect(RX, 2, DBG_X - 2, H - 2, (44, 44, 46))
 rect(DBG_X + 2, 2, W - 2, H - 2, (60, 30, 30))
 text(DBG_X + 10, 18, "DEBUG", (240, 200, 200), 10, "bold")
 text(DBG_X + 10, 56, "nan count", (220, 220, 220), 8)
-text(DBG_X + 10, 94, "stack 1 (expect -2.89)", (220, 220, 220), 8)
-text(DBG_X + 10, 132, "stack 2 (expect -2.87)", (220, 220, 220), 8)
+text(DBG_X + 10, 94, "stack 1 (expect -2.89 to -2.90)", (220, 220, 220), 8)
+text(DBG_X + 10, 132, "stack 2 (expect -2.87 to -2.88)", (220, 220, 220), 8)
 for (yy) in (8, H - 12):  # rack screws
     for xx in (RX + 6, DBG_X - 12):
         oval(xx, yy, xx + 6, yy + 6, (110, 110, 112))
