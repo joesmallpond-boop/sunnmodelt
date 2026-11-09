@@ -414,15 +414,15 @@ def generate():
     B.append("// ---------- power amp: V6 long-tail PI, 4x6L6GC push-pull, NFB with presence")
     B.append(onepole_hp("pre", "h_pi_hpx", "h_pi_hpy", "h_k_hp7"))
     B.append("pin = pre - h_fb;")
-    B.append("vpi = 70 * tanh(27 * pin / 70);")
+    B.append("vpi = 70 * tanh(clamp(27 * pin / 70, -20, 20));")
     B.append(onepole_hp("vpi", "h_pg_hpx", "h_pg_hpy", "h_k_hp34"))
     B.append("u = vpi / vbias;")
     B.append("sagf = 1 - sagamt * min(sqrt(h_env), 1);")
     B.append("pm = 2.6 * sagf;")
     B.append("pz = 1 + u; psp = pz; if (8 * pz < 30) { psp = log(1 + exp(8 * pz)) / 8; }")
-    B.append("pp = pow(psp, 1.5); sA = pm * tanh(pp / pm);")
+    B.append("pp = pow(psp, 1.5); sA = pm * tanh(clamp(pp / pm, -20, 20));")
     B.append("pz = 1 - u; psp = pz; if (8 * pz < 30) { psp = log(1 + exp(8 * pz)) / 8; }")
-    B.append("pp = pow(psp, 1.5); sB = pm * tanh(pp / pm);")
+    B.append("pp = pow(psp, 1.5); sB = pm * tanh(clamp(pp / pm, -20, 20));")
     B.append("dy = (sA - sB) / 3;")
     B.append(onepole_hp("dy", "h_ot_hpx", "h_ot_hpy", "h_k_hp30"))
     B.append(onepole_lp("dy", "h_ot_lp", "h_k_lpot"))
@@ -478,16 +478,22 @@ def generate():
     pre = ["L" + n + " = " + n + ";" for n in H]
     post = [n + " = fixnan(L" + n + ");" for n in H]
     code = "\n".join(L) + "\n\n" + "\n".join(pre) + "\n" + body + "\n" + "\n".join(post) + "\n"
-    return no_sci(code)
+    code = no_sci(code)
+    # every integer literal in the processing code becomes a float literal (no int arithmetic/overflow)
+    head, body = code.split("\n\n", 1)
+    body = _re2.sub(r"(?<![\w.])(\d+)(?![\w.])", r"\1.0", body)
+    return head + "\n\n" + body
 
 def no_sci(code):
-    """gen~ misreads scientific notation (1.2e-10) - spell every such literal out as a division/multiplication."""
+    """gen~ misreads scientific notation (1.2e-10) and overflows big integer literals, so every
+    such number is written as a plain decimal float literal, e.g. 0.00000000012130972696245753."""
+    from decimal import Decimal
     def rep(mm):
-        mant, ex = mm.group(1), int(mm.group(2))
-        if ex < 0:
-            return "(" + mant + " / 1" + "0" * (-ex) + ")"
-        return "(" + mant + " * 1" + "0" * ex + ")"
-    return _re2.sub(r"(?<![\w.])(\d+\.?\d*)[eE]([+-]?\d+)", rep, code)
+        t = format(Decimal(mm.group(0)), "f")
+        if "." not in t:
+            t += ".0"
+        return t
+    return _re2.sub(r"(?<![\w.])\d+\.?\d*[eE][+-]?\d+", rep, code)
 
 if __name__ == "__main__":
     code = generate()
