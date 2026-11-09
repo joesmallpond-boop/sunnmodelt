@@ -132,10 +132,9 @@ RX = AMP_R + 4
 rect(AMP_R, 0, W, H, (16, 16, 17))
 rect(RX, 2, DBG_X - 2, H - 2, (44, 44, 46))
 rect(DBG_X + 2, 2, W - 2, H - 2, (60, 30, 30))
-text(DBG_X + 10, 18, "DEBUG", (240, 200, 200), 10, "bold")
-text(DBG_X + 10, 56, "nan count", (220, 220, 220), 8)
-text(DBG_X + 10, 94, "stack 1 (expect -2.89 to -2.90)", (220, 220, 220), 8)
-text(DBG_X + 10, 132, "stack 2 (expect -2.87 to -2.88)", (220, 220, 220), 8)
+text(DBG_X + 10, 15, "DEBUG", (240, 200, 200), 10, "bold")
+text(DBG_X + 10, 48, "nan count", (220, 220, 220), 8)
+text(DBG_X + 10, 133, "stack 2 (expect -2.87 to -2.88)", (220, 220, 220), 8)
 for (yy) in (8, H - 12):  # rack screws
     for xx in (RX + 6, DBG_X - 12):
         oval(xx, yy, xx + 6, yy + 6, (110, 110, 112))
@@ -312,16 +311,22 @@ pw = box(maxclass="live.tab", numinlets=1, numoutlets=3, outlettype=["", "", "fl
 to_gen(pw, "power")
 # debug tap + readouts
 dbg = box(maxclass="live.menu", numinlets=1, numoutlets=3, outlettype=["", "", "float"], parameter_enable=1,
-          patching_rect=[px[0], 200, 120, 15], presentation=1, presentation_rect=[DBG_X + 10, 30, W - DBG_X - 20, 16],
+          patching_rect=[px[0], 200, 120, 15], presentation=1, presentation_rect=[DBG_X + 10, 21, W - DBG_X - 20, 16],
           varname="dbg_tap", saved_attribute_attributes=enum_vo("Debug Tap", "Tap",
           ["Full amp", "Dry input", "Test tone", "After V1A", "Preamp out", "Power amp out", "Before cab"], 0))
 to_gen(dbg, "dbg_tap")
-for k, yy in ((2, 60), (3, 98), (4, 136)):
+probe = box(maxclass="live.menu", numinlets=1, numoutlets=3, outlettype=["", "", "float"], parameter_enable=1,
+          patching_rect=[px[0] + 150, 200, 120, 15], presentation=1, presentation_rect=[DBG_X + 10, 75, W - DBG_X - 20, 16],
+          varname="probe", saved_attribute_attributes=enum_vo("Debug Probe", "Probe",
+          ["a1 (-2.89)", "treble knob (5.5)", "pt (0.300)", "pm1 (0.500)", "pl (0.100)", "fs2 (88200/96000)",
+           "sa0 (-0.727)", "sa1 (-4.30)", "sa2 (-3.49)", "sa3 (-0.347)", "A0 (-2.01/-2.59)", "A1 (5.82/7.50)"], 0))
+to_gen(probe, "probe")
+for k, yy in ((2, 51), (3, 94), (4, 137)):
     sn = box(maxclass="newobj", text="snapshot~ 200", numinlets=2, numoutlets=1, outlettype=["float"],
              patching_rect=[30 + k * 120, 700, 90, 22])
     fl = box(maxclass="flonum", numinlets=1, numoutlets=2, outlettype=["", "bang"], format=6,
              patching_rect=[30 + k * 120, 730, 80, 22], presentation=1,
-             presentation_rect=[DBG_X + 10, yy, W - DBG_X - 20, 20], fontsize=11.0, ignoreclick=1)
+             presentation_rect=[DBG_X + 10, yy, W - DBG_X - 20, 18], fontsize=11.0, ignoreclick=1)
     wire(gen, k, sn, 0); wire(sn, 0, fl, 0)
 # input / output trims (Live style)
 dial("p_input", "Input", "Input", [RX + 14, 100, 60, 56], -24, 24, 0.0, unit=4, show=True)

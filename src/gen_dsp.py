@@ -266,7 +266,7 @@ PARAMS = [
     ("ch2_gain", 5.5, 1, 10), ("ch2_treble", 5.5, 1, 10), ("ch2_bass", 5.5, 1, 10), ("ch2_mid", 5.5, 1, 10),
     ("ch2_vol", 4, 1, 10),
     ("chsel", 1, 0, 1), ("presence", 3, 1, 10), ("standby", 0, 0, 1),
-    ("power", 1, 0, 1), ("cab", 1, 0, 7), ("p_output", -6, -36, 12), ("dbg_tap", 0, 0, 6),
+    ("power", 1, 0, 1), ("cab", 1, 0, 7), ("p_output", -6, -36, 12), ("dbg_tap", 0, 0, 6), ("probe", 0, 0, 11),
 ]
 SMOOTHED = ["p_input", "ch1_vol", "ch1_treble", "ch1_bass", "ch1_mid", "ch2_gain", "ch2_treble",
             "ch2_bass", "ch2_mid", "ch2_vol", "chsel", "presence", "standby", "power", "p_output"]
@@ -319,7 +319,7 @@ def generate():
     B = []
     B.append("iq = 0; vp0 = 0; x = 0; y = 0; i = 0; j = 0; lo = 0; hi = 0; ti = 0; vin = 0; vkk = 0; vg = 0; vpk = 0; vgk = 0;")
     B.append("kz = 0; ksp = 0; ke1 = 0; kip = 0; gx = 0; gsp = 0; lx = 0; li = 0; lf = 0; la = 0; lb = 0;")
-    B.append("rp = 0; nf_n0 = 0; nf_n1 = 0; nf_n2 = 0; nf_d0 = 0; nf_d1 = 0; nf_d2 = 0; ctau = 0; cn1 = 0; cn2 = 0; cd1 = 0; cd2 = 0; ca0 = 0; cchg = 0; d_yo = 0; ctp = 0; cf = 0; cq = 0; cgd = 0; ihp = 0; ilp = 0; ipk = 0; ioff = 0; tp = 0; d_v1a = 0; d_pre = 0; d_pa = 0; tb_t = 0; tb_t2 = 0; tb_b0 = 0; tb_b1 = 0; tb_b2 = 0; hpt = 0; fot = 0; tsy = 0; bc1 = 0; bc2 = 0; bc3 = 0; fs2 = samplerate * 2; xin = 0;")
+    B.append("pr = 0; dp_kn = 0; dp_pt = 0; dp_pm = 0; dp_pl = 0; dp_sa0 = 0; dp_sa1 = 0; dp_sa2 = 0; dp_sa3 = 0; dp_A0 = 0; dp_A1 = 0; rp = 0; nf_n0 = 0; nf_n1 = 0; nf_n2 = 0; nf_d0 = 0; nf_d1 = 0; nf_d2 = 0; ctau = 0; cn1 = 0; cn2 = 0; cd1 = 0; cd2 = 0; ca0 = 0; cchg = 0; d_yo = 0; ctp = 0; cf = 0; cq = 0; cgd = 0; ihp = 0; ilp = 0; ipk = 0; ioff = 0; tp = 0; d_v1a = 0; d_pre = 0; d_pa = 0; tb_t = 0; tb_t2 = 0; tb_b0 = 0; tb_b1 = 0; tb_b2 = 0; hpt = 0; fot = 0; tsy = 0; bc1 = 0; bc2 = 0; bc3 = 0; fs2 = samplerate * 2; xin = 0;")
     B.append("a = 0; b = 0; pre = 0; pin = 0; vpi = 0; u = 0; pz = 0; psp = 0; pp = 0; sA = 0; sB = 0; pm = 0;")
     B.append("vs = 0; fbr = 0; yo = 0; dy = 0; vbias = 0; vfull = 0; sagamt = 0; sagf = 0; r1 = 0; r2 = 0; rth = 0;")
     B.append("pt = 0; pm1 = 0; pl = 0; tap = 0; wc = 0; cw = 0; sw = 0; al = 0; ga = 0; a0 = 0; ysec = 0; cb = 0; cg = 0;")
@@ -394,6 +394,8 @@ def generate():
         B.append(f"pm1 = clamp((sm_{pm_} - 1) / 9, 0.002, 0.998);")
         B.append(f"pl = clamp({aud(f'(sm_{pl_} - 1) / 9', ab)}, 0.002, 0.998);")
         B.append(stack_coeff_code(nm, "pt", "pm1", "pl"))
+        if nm == "ts1":
+            B.append("dp_kn = sm_ch1_treble; dp_pt = pt; dp_pm = pm1; dp_pl = pl; dp_sa0 = ts1_sa0; dp_sa1 = ts1_sa1; dp_sa2 = ts1_sa2; dp_sa3 = ts1_sa3; dp_A0 = ts1_A0; dp_A1 = ts1_A1;")
 
     # NFB network: R107 150k || C41 .0047u -> R108 47k -> R109 4.7k || (C43 .1u + R110 25k 30C presence)
     B.append(nfb_coeff_code())
@@ -512,7 +514,8 @@ def generate():
     B.append("out1 = y;")
     B.append("out2 = y;")
     B.append("out3 = h_nan;")
-    B.append("out4 = h_ts1_a1;")
+    B.append("pr = floor(probe + 0.5);")
+    B.append("out4 = (pr == 0) * h_ts1_a1 + (pr == 1) * dp_kn + (pr == 2) * dp_pt + (pr == 3) * dp_pm + (pr == 4) * dp_pl + (pr == 5) * fs2 + (pr == 6) * dp_sa0 + (pr == 7) * dp_sa1 * 1000 + (pr == 8) * dp_sa2 * 1000000 + (pr == 9) * dp_sa3 * 1000000000 + (pr == 10) * dp_A0 / 1000000 + (pr == 11) * dp_A1 / 1000000;")
     B.append("out5 = h_ts2_a1;")
     B.insert(0, " ".join(f"{v} = 0;" for v in sorted(_TAC_VARS)) + " qt = 0;")
     # Work on local copies of every History inside the sample, write them back once at the end.
