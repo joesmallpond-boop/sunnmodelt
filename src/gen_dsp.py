@@ -214,7 +214,7 @@ PARAMS = [
     ("ch2_gain", 5.5, 1, 10), ("ch2_treble", 5.5, 1, 10), ("ch2_bass", 5.5, 1, 10), ("ch2_mid", 5.5, 1, 10),
     ("ch2_vol", 4, 1, 10),
     ("chsel", 1, 0, 1), ("presence", 3, 1, 10), ("standby", 0, 0, 1),
-    ("power", 1, 0, 1), ("cab", 1, 0, 7), ("p_output", -6, -36, 12), ("dbg_tap", 0, 0, 5),
+    ("power", 1, 0, 1), ("cab", 1, 0, 7), ("p_output", -6, -36, 12), ("dbg_tap", 0, 0, 6),
 ]
 SMOOTHED = ["p_input", "ch1_vol", "ch1_treble", "ch1_bass", "ch1_mid", "ch2_gain", "ch2_treble",
             "ch2_bass", "ch2_mid", "ch2_vol", "chsel", "presence", "standby", "power", "p_output"]
@@ -267,7 +267,7 @@ def generate():
     B = []
     B.append("iq = 0; vp0 = 0; x = 0; y = 0; i = 0; j = 0; lo = 0; hi = 0; ti = 0; vin = 0; vkk = 0; vg = 0; vpk = 0; vgk = 0;")
     B.append("kz = 0; ksp = 0; ke1 = 0; kip = 0; gx = 0; gsp = 0; lx = 0; li = 0; lf = 0; la = 0; lb = 0;")
-    B.append("tp = 0; d_v1a = 0; d_pre = 0; d_pa = 0; tb_t = 0; tb_t2 = 0; tb_b0 = 0; tb_b1 = 0; tb_b2 = 0; hpt = 0; fot = 0; tsy = 0; bc1 = 0; bc2 = 0; bc3 = 0; fs2 = samplerate * 2; xin = 0;")
+    B.append("d_yo = 0; ctp = 0; cf = 0; cq = 0; cgd = 0; ihp = 0; ilp = 0; ipk = 0; ioff = 0; tp = 0; d_v1a = 0; d_pre = 0; d_pa = 0; tb_t = 0; tb_t2 = 0; tb_b0 = 0; tb_b1 = 0; tb_b2 = 0; hpt = 0; fot = 0; tsy = 0; bc1 = 0; bc2 = 0; bc3 = 0; fs2 = samplerate * 2; xin = 0;")
     B.append("a = 0; b = 0; pre = 0; pin = 0; vpi = 0; u = 0; pz = 0; psp = 0; pp = 0; sA = 0; sB = 0; pm = 0;")
     B.append("vs = 0; fbr = 0; yo = 0; dy = 0; vbias = 0; vfull = 0; sagamt = 0; sagf = 0; r1 = 0; r2 = 0; rth = 0;")
     B.append("pt = 0; pm1 = 0; pl = 0; tap = 0; wc = 0; cw = 0; sw = 0; al = 0; ga = 0; a0 = 0; ysec = 0; cb = 0; cg = 0;")
@@ -349,28 +349,24 @@ def generate():
 
     # cabinet coefficients (base rate)
     B.append("cb = floor(clamp(cab, 0, 7) + 0.5);")
+    # flat (no nested ifs): pick each section's settings arithmetically, then one generic RBJ design
+    def sel(vals):
+        return " + ".join(f"(cb == {ci}) * {float(v)!r}" for ci, v in enumerate(vals) if float(v) != 0.0) or "0"
     B.append("if (cb != h_cabsel) {")
     B.append("h_cabsel = cb; h_cabfade = 0;")
-    for ci, (cname, secs) in enumerate(CABS):
-        B.append(f"if (cb == {ci}) {{")
-        B.append(f"h_cabgain = {CAB_MAKEUP[ci]!r};")
-        for si in range(NSEC):
-            if si < len(secs):
-                tp, f, q, g = secs[si]
-                B.append(f"wc = 2 * pi * min({float(f)!r}, 0.45 * samplerate) / samplerate; cw = cos(wc); sw = sin(wc); al = sw / (2 * {q!r}); ga = pow(10, {g!r} / 40);")
-                if tp == 1:
-                    B.append(f"a0 = 1 + al; h_cb{si}_b0 = (1 + cw) / 2 / a0; h_cb{si}_b1 = -(1 + cw) / a0; h_cb{si}_b2 = (1 + cw) / 2 / a0;")
-                    B.append(f"h_cb{si}_a1 = -2 * cw / a0; h_cb{si}_a2 = (1 - al) / a0;")
-                elif tp == 2:
-                    B.append(f"a0 = 1 + al; h_cb{si}_b0 = (1 - cw) / 2 / a0; h_cb{si}_b1 = (1 - cw) / a0; h_cb{si}_b2 = (1 - cw) / 2 / a0;")
-                    B.append(f"h_cb{si}_a1 = -2 * cw / a0; h_cb{si}_a2 = (1 - al) / a0;")
-                else:
-                    B.append(f"a0 = 1 + al / ga; h_cb{si}_b0 = (1 + al * ga) / a0; h_cb{si}_b1 = -2 * cw / a0; h_cb{si}_b2 = (1 - al * ga) / a0;")
-                    B.append(f"h_cb{si}_a1 = -2 * cw / a0; h_cb{si}_a2 = (1 - al / ga) / a0;")
-            else:
-                B.append(f"h_cb{si}_b0 = 1; h_cb{si}_b1 = 0; h_cb{si}_b2 = 0; h_cb{si}_a1 = 0; h_cb{si}_a2 = 0;")
-        B.append("}")
+    B.append(f"h_cabgain = {sel(CAB_MAKEUP)};")
     for si in range(NSEC):
+        secs = [c[1][si] if si < len(c[1]) else (0, 1000.0, 0.7, 0.0) for c in CABS]
+        B.append(f"ctp = {sel([x[0] for x in secs])}; cf = {sel([x[1] for x in secs])}; cq = {sel([x[2] for x in secs])}; cgd = {sel([x[3] for x in secs])};")
+        B.append("cf = clamp(cf, 20, 0.45 * samplerate); cq = max(cq, 0.1);")
+        B.append("wc = 2 * pi * cf / samplerate; cw = cos(wc); sw = sin(wc); al = sw / (2 * cq); ga = pow(10, cgd / 40);")
+        B.append("ihp = (ctp == 1); ilp = (ctp == 2); ipk = (ctp == 3); ioff = (ctp == 0);")
+        B.append("a0 = ihp * (1 + al) + ilp * (1 + al) + ipk * (1 + al / ga) + ioff;")
+        B.append(f"h_cb{si}_b0 = (ihp * (1 + cw) / 2 + ilp * (1 - cw) / 2 + ipk * (1 + al * ga) + ioff) / a0;")
+        B.append(f"h_cb{si}_b1 = (ihp * -(1 + cw) + ilp * (1 - cw) + ipk * -2 * cw) / a0;")
+        B.append(f"h_cb{si}_b2 = (ihp * (1 + cw) / 2 + ilp * (1 - cw) / 2 + ipk * (1 - al * ga)) / a0;")
+        B.append(f"h_cb{si}_a1 = ((ihp + ilp + ipk) * -2 * cw) / a0;")
+        B.append(f"h_cb{si}_a2 = (ihp * (1 - al) + ilp * (1 - al) + ipk * (1 - al / ga)) / a0;")
         B.append(f"h_cb{si}_x1 = 0; h_cb{si}_x2 = 0; h_cb{si}_y1 = 0; h_cb{si}_y2 = 0;")
     B.append("}")
 
@@ -453,7 +449,7 @@ def generate():
     B.extend(chain)
     B.append("h_xprev = x;")
     B.append("// ---------- cabinet")
-    B.append("y = yo;")
+    B.append("y = yo; d_yo = yo;")
     for si in range(NSEC):
         B.append(f"ysec = h_cb{si}_b0 * y + h_cb{si}_b1 * h_cb{si}_x1 + h_cb{si}_b2 * h_cb{si}_x2 - h_cb{si}_a1 * h_cb{si}_y1 - h_cb{si}_a2 * h_cb{si}_y2;")
         B.append(f"h_cb{si}_x2 = h_cb{si}_x1; h_cb{si}_x1 = y; h_cb{si}_y2 = h_cb{si}_y1; h_cb{si}_y1 = ysec; y = ysec;")
@@ -464,7 +460,7 @@ def generate():
     B.append("h_nan = h_nan + isnan(y) + isnan(h_ts1_z1) + isnan(h_ts2_z1) + isnan(h_fb) + (abs(h_fb) > 1e9);")
     B.append("h_dbgph = h_dbgph + 220 / samplerate; h_dbgph = h_dbgph - floor(h_dbgph);")
     B.append("tp = floor(dbg_tap + 0.5);")
-    B.append("y = (tp == 0) * y + (tp == 1) * (in1 + in2) * 0.5 + (tp == 2) * 0.25 * sin(2 * pi * h_dbgph) + (tp == 3) * d_v1a / 50 + (tp == 4) * d_pre / 10 + (tp == 5) * d_pa;")
+    B.append("y = (tp == 0) * y + (tp == 1) * (in1 + in2) * 0.5 + (tp == 2) * 0.25 * sin(2 * pi * h_dbgph) + (tp == 3) * d_v1a / 50 + (tp == 4) * d_pre / 10 + (tp == 5) * d_pa + (tp == 6) * d_yo;")
     B.append("y = fixnan(clamp(y, -4, 4));")
     B.append("out1 = y;")
     B.append("out2 = y;")

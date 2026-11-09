@@ -310,7 +310,7 @@ to_gen(pw, "power")
 dbg = box(maxclass="live.menu", numinlets=1, numoutlets=3, outlettype=["", "", "float"], parameter_enable=1,
           patching_rect=[px[0], 200, 120, 15], presentation=1, presentation_rect=[DBG_X + 10, 30, W - DBG_X - 20, 16],
           varname="dbg_tap", saved_attribute_attributes=enum_vo("Debug Tap", "Tap",
-          ["Full amp", "Dry input", "Test tone", "After V1A", "Preamp out", "Power amp out"], 0))
+          ["Full amp", "Dry input", "Test tone", "After V1A", "Preamp out", "Power amp out", "Before cab"], 0))
 to_gen(dbg, "dbg_tap")
 for k, yy in ((2, 72), (3, 112)):
     sn = box(maxclass="newobj", text="snapshot~ 200", numinlets=2, numoutlets=1, outlettype=["float"],
