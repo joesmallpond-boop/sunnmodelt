@@ -54,6 +54,43 @@ def bilin_matrix(order=3):
         M.append(c)
     return M
 
+_TAC_VARS = set()
+def tac(expr, target, prefix):
+    """Emit expr as three-address code (one operation per statement) ending in `target = ...;`."""
+    lines = []
+    cnt = [0]
+    def new():
+        cnt[0] += 1
+        v = f"{prefix}{cnt[0]}"
+        _TAC_VARS.add(v)
+        return v
+    def lit(x):
+        return repr(float(x))
+    def emit(e):
+        if e.is_Number:
+            return lit(e)
+        if e.is_Symbol:
+            return str(e)
+        if e.is_Add or e.is_Mul:
+            op = " + " if e.is_Add else " * "
+            args = [emit(a) for a in e.args]
+            acc = args[0]
+            for a in args[1:]:
+                v = new(); lines.append(f"{v} = {acc}{op}{a};"); acc = v
+            return acc
+        if e.is_Pow:
+            b = emit(e.base); ex = e.exp
+            if ex.is_Integer and int(ex) > 0:
+                acc = b
+                for _ in range(int(ex) - 1):
+                    v = new(); lines.append(f"{v} = {acc} * {b};"); acc = v
+                return acc
+            v = new(); lines.append(f"{v} = pow({b}, {emit(ex)});"); return v
+        raise ValueError(e)
+    r = emit(sp.expand(expr))
+    lines.append(f"{target} = {r};")
+    return "\n".join(lines)
+
 def stack_coeff_code(name, tv, mv, lv):
     d = STACKS[name]
     num, den = derive(d["R1"], d["R2"], d["R3"], d["R4"], d["C1"], d["C2"], d["C3"], d["Rs"], d["RL"])
@@ -66,19 +103,17 @@ def stack_coeff_code(name, tv, mv, lv):
     sub = {t: sp.Symbol(tv), m: sp.Symbol(mv), l: sp.Symbol(lv)}
     lines = []
     for i, c in enumerate(nc):
-        e = sp.horner(sp.expand(c / scale)).subs(sub) if c != 0 else 0
-        lines.append(f"{name}_sb{i} = {sp.ccode(e)};")
+        lines.append(tac(sp.expand(c / scale).subs(sub) if c != 0 else sp.Integer(0), f"{name}_sb{i}", f"q{name}b{i}_"))
     for i, c in enumerate(dc):
-        e = sp.horner(sp.expand(c / scale)).subs(sub) if c != 0 else 0
-        lines.append(f"{name}_sa{i} = {sp.ccode(e)};")
+        lines.append(tac(sp.expand(c / scale).subs(sub) if c != 0 else sp.Integer(0), f"{name}_sa{i}", f"q{name}a{i}_"))
     M = bilin_matrix()
     lines.append("bc1 = 2 * fs2; bc2 = bc1 * bc1; bc3 = bc2 * bc1;")
     cp = ["1", "bc1", "bc2", "bc3"]
     for k in range(4):
-        tb = " + ".join(f"({M[n][k]:g}) * {name}_sb{n} * {cp[n]}" for n in range(4))
-        ta = " + ".join(f"({M[n][k]:g}) * {name}_sa{n} * {cp[n]}" for n in range(4))
-        lines.append(f"{name}_B{k} = {tb};")
-        lines.append(f"{name}_A{k} = {ta};")
+        for X, src in (("B", "sb"), ("A", "sa")):
+            lines.append(f"{name}_{X}{k} = 0;")
+            for n in range(4):
+                lines.append(f"qt = {name}_{src}{n} * {cp[n]}; qt = qt * {M[n][k]:g}; {name}_{X}{k} = {name}_{X}{k} + qt;")
     for k in range(4):
         lines.append(f"h_{name}_b{k} = {name}_B{k} / {name}_A0;")
     for k in range(1, 4):
@@ -189,9 +224,9 @@ def nfb_coeff_code():
     scale = float(sp.Abs(dc[0].subs(Rp, 10000.0)))
     out = [f"rp = 25000 * ((pow(5.444, 1 - (sm_presence - 1) / 9) - 1) / 4.444) + 10;   // 30C reverse taper, max presence = 0 ohm"]
     for i, c in enumerate(nc):
-        out.append(f"nf_n{i} = {sp.ccode(sp.horner(sp.expand(c / scale)).subs(Rp, sp.Symbol('rp'))) if c != 0 else 0};")
+        out.append(tac(sp.expand(c / scale).subs(Rp, sp.Symbol('rp')) if c != 0 else sp.Integer(0), f"nf_n{i}", f"qnfn{i}_"))
     for i, c in enumerate(dc):
-        out.append(f"nf_d{i} = {sp.ccode(sp.horner(sp.expand(c / scale)).subs(Rp, sp.Symbol('rp'))) if c != 0 else 0};")
+        out.append(tac(sp.expand(c / scale).subs(Rp, sp.Symbol('rp')) if c != 0 else sp.Integer(0), f"nf_d{i}", f"qnfd{i}_"))
     out.append("bc1 = 2 * fs2; bc2 = bc1 * bc1;")
     out.append("ca0 = nf_d0 + nf_d1 * bc1 + nf_d2 * bc2;")
     out.append("h_nf_b0 = (nf_n0 + nf_n1 * bc1 + nf_n2 * bc2) / ca0; h_nf_b1 = (2 * nf_n0 - 2 * nf_n2 * bc2) / ca0; h_nf_b2 = (nf_n0 - nf_n1 * bc1 + nf_n2 * bc2) / ca0;")
@@ -479,6 +514,7 @@ def generate():
     B.append("out3 = h_nan;")
     B.append("out4 = h_ts1_a1;")
     B.append("out5 = h_ts2_a1;")
+    B.insert(0, " ".join(f"{v} = 0;" for v in sorted(_TAC_VARS)) + " qt = 0;")
     # Work on local copies of every History inside the sample, write them back once at the end.
     # This makes the code independent of when gen~ commits History writes, and keeps all
     # History writes at top level (never inside an if or a loop). fixnan stops a NaN from
@@ -495,7 +531,18 @@ def generate():
     # every integer literal in the processing code becomes a float literal (no int arithmetic/overflow)
     head, body = code.split("\n\n", 1)
     body = _re2.sub(r"(?<![\w.])(\d+)(?![\w.])", r"\1.0", body)
-    return head + "\n\n" + body
+    # one statement per line (no very long lines)
+    out = []
+    for ln in body.split("\n"):
+        cmt = ""
+        if "//" in ln:
+            ln, cmt = ln.split("//", 1)
+            cmt = "//" + cmt
+        parts = [p.strip() for p in ln.split(";") if p.strip()]
+        out.extend(p + ";" for p in parts)
+        if cmt:
+            out.append(cmt)
+    return head + "\n\n" + "\n".join(out) + "\n"
 
 def no_sci(code):
     """gen~ misreads very small/large literals. Every scientific-notation number is rewritten as a
