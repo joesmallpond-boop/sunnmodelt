@@ -465,7 +465,8 @@ def generate():
     B.append("out1 = y;")
     B.append("out2 = y;")
     B.append("out3 = h_nan;")
-    B.append("out4 = h_c1_div;")
+    B.append("out4 = h_ts1_a1;")
+    B.append("out5 = h_ts2_a1;")
     # Work on local copies of every History inside the sample, write them back once at the end.
     # This makes the code independent of when gen~ commits History writes, and keeps all
     # History writes at top level (never inside an if or a loop). fixnan stops a NaN from
@@ -485,14 +486,22 @@ def generate():
     return head + "\n\n" + body
 
 def no_sci(code):
-    """gen~ misreads scientific notation (1.2e-10) and overflows big integer literals, so every
-    such number is written as a plain decimal float literal, e.g. 0.00000000012130972696245753."""
-    from decimal import Decimal
+    """gen~ misreads very small/large literals. Every scientific-notation number is rewritten as a
+    short mantissa times a chain of 0.001 (or 1000.0) factors, e.g. 2.2e-9 -> (2.2 * 0.001 * 0.001 * 0.001)."""
     def rep(mm):
-        t = format(Decimal(mm.group(0)), "f")
-        if "." not in t:
-            t += ".0"
-        return t
+        v = float(mm.group(0))
+        if v == 0:
+            return "0.0"
+        k = 0
+        while abs(v) < 1.0:
+            v *= 1000.0; k += 1
+        while abs(v) >= 1000.0:
+            v /= 1000.0; k -= 1
+        m = repr(round(v, 12))
+        if "e" in m or "E" in m:
+            m = format(v, ".12f")
+        f = " * 0.001" * k if k > 0 else " * 1000.0" * (-k)
+        return "(" + m + f + ")"
     return _re2.sub(r"(?<![\w.])\d+\.?\d*[eE][+-]?\d+", rep, code)
 
 if __name__ == "__main__":

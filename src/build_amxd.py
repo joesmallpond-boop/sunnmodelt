@@ -133,8 +133,9 @@ rect(AMP_R, 0, W, H, (16, 16, 17))
 rect(RX, 2, DBG_X - 2, H - 2, (44, 44, 46))
 rect(DBG_X + 2, 2, W - 2, H - 2, (60, 30, 30))
 text(DBG_X + 10, 18, "DEBUG", (240, 200, 200), 10, "bold")
-text(DBG_X + 10, 66, "nan count", (220, 220, 220), 8)
-text(DBG_X + 10, 106, "check (~0.48)", (220, 220, 220), 8)
+text(DBG_X + 10, 56, "nan count", (220, 220, 220), 8)
+text(DBG_X + 10, 94, "stack 1 (expect -2.89)", (220, 220, 220), 8)
+text(DBG_X + 10, 132, "stack 2 (expect -2.87)", (220, 220, 220), 8)
 for (yy) in (8, H - 12):  # rack screws
     for xx in (RX + 6, DBG_X - 12):
         oval(xx, yy, xx + 6, yy + 6, (110, 110, 112))
@@ -175,12 +176,14 @@ gen_patcher = {
         {"box": {"id": "obj-2", "maxclass": "newobj", "text": "in 2", "numinlets": 0, "numoutlets": 1,
                  "outlettype": [""], "patching_rect": [300, 20, 30, 22]}},
         {"box": {"id": "obj-3", "maxclass": "codebox", "code": code, "fontface": 0,
-                 "fontname": "<Monospaced>", "fontsize": 12.0, "numinlets": 2, "numoutlets": 4,
-                 "outlettype": ["", "", "", ""], "patching_rect": [20, 60, 760, 560]}},
+                 "fontname": "<Monospaced>", "fontsize": 12.0, "numinlets": 2, "numoutlets": 5,
+                 "outlettype": ["", "", "", "", ""], "patching_rect": [20, 60, 760, 560]}},
         {"box": {"id": "obj-6", "maxclass": "newobj", "text": "out 3", "numinlets": 1, "numoutlets": 0,
                  "patching_rect": [300, 640, 37, 22]}},
         {"box": {"id": "obj-7", "maxclass": "newobj", "text": "out 4", "numinlets": 1, "numoutlets": 0,
                  "patching_rect": [500, 640, 37, 22]}},
+        {"box": {"id": "obj-8", "maxclass": "newobj", "text": "out 5", "numinlets": 1, "numoutlets": 0,
+                 "patching_rect": [600, 640, 37, 22]}},
         {"box": {"id": "obj-4", "maxclass": "newobj", "text": "out 1", "numinlets": 1, "numoutlets": 0,
                  "patching_rect": [20, 640, 37, 22]}},
         {"box": {"id": "obj-5", "maxclass": "newobj", "text": "out 2", "numinlets": 1, "numoutlets": 0,
@@ -193,6 +196,7 @@ gen_patcher = {
         {"patchline": {"source": ["obj-3", 1], "destination": ["obj-5", 0]}},
         {"patchline": {"source": ["obj-3", 2], "destination": ["obj-6", 0]}},
         {"patchline": {"source": ["obj-3", 3], "destination": ["obj-7", 0]}},
+        {"patchline": {"source": ["obj-3", 4], "destination": ["obj-8", 0]}},
     ],
 }
 
@@ -201,7 +205,7 @@ lcd = box(maxclass="lcd", numinlets=1, numoutlets=4, outlettype=["list", "list",
           background=1, ignoreclick=1, border=0, local=1, bgcolor=[0.086, 0.086, 0.09, 1.0])
 plugin = box(maxclass="newobj", text="plugin~", numinlets=2, numoutlets=2, outlettype=["signal", "signal"],
              patching_rect=[30, 420, 60, 22])
-gen = box(maxclass="newobj", text="gen~", numinlets=2, numoutlets=4, outlettype=["signal", "signal", "signal", "signal"],
+gen = box(maxclass="newobj", text="gen~", numinlets=2, numoutlets=5, outlettype=["signal", "signal", "signal", "signal", "signal"],
           patching_rect=[30, 520, 300, 22], patcher=gen_patcher)
 plugout = box(maxclass="newobj", text="plugout~", numinlets=2, numoutlets=0, patching_rect=[30, 600, 60, 22])
 wire(plugin, 0, gen, 0); wire(plugin, 1, gen, 1)
@@ -312,7 +316,7 @@ dbg = box(maxclass="live.menu", numinlets=1, numoutlets=3, outlettype=["", "", "
           varname="dbg_tap", saved_attribute_attributes=enum_vo("Debug Tap", "Tap",
           ["Full amp", "Dry input", "Test tone", "After V1A", "Preamp out", "Power amp out", "Before cab"], 0))
 to_gen(dbg, "dbg_tap")
-for k, yy in ((2, 72), (3, 112)):
+for k, yy in ((2, 60), (3, 98), (4, 136)):
     sn = box(maxclass="newobj", text="snapshot~ 200", numinlets=2, numoutlets=1, outlettype=["float"],
              patching_rect=[30 + k * 120, 700, 90, 22])
     fl = box(maxclass="flonum", numinlets=1, numoutlets=2, outlettype=["", "bang"], format=6,
