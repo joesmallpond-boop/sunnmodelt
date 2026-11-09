@@ -3,6 +3,7 @@
 Circuit values come from the Fender/Sunn Model T service schematics (sheets 1 & 2).
 """
 import math
+import re as _re2
 import sympy as sp
 from tonestack import derive, s, t, m, l
 
@@ -480,7 +481,17 @@ def generate():
     body = pat.sub(lambda mm: ("L" + mm.group(1)) if mm.group(1) in hs else mm.group(1), body)
     pre = ["L" + n + " = " + n + ";" for n in H]
     post = [n + " = fixnan(L" + n + ");" for n in H]
-    return "\n".join(L) + "\n\n" + "\n".join(pre) + "\n" + body + "\n" + "\n".join(post) + "\n"
+    code = "\n".join(L) + "\n\n" + "\n".join(pre) + "\n" + body + "\n" + "\n".join(post) + "\n"
+    return no_sci(code)
+
+def no_sci(code):
+    """gen~ misreads scientific notation (1.2e-10) - spell every such literal out as a division/multiplication."""
+    def rep(mm):
+        mant, ex = mm.group(1), int(mm.group(2))
+        if ex < 0:
+            return "(" + mant + " / 1" + "0" * (-ex) + ")"
+        return "(" + mant + " * 1" + "0" * ex + ")"
+    return _re2.sub(r"(?<![\w.])(\d+\.?\d*)[eE]([+-]?\d+)", rep, code)
 
 if __name__ == "__main__":
     code = generate()
