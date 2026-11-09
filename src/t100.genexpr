@@ -468,32 +468,13 @@ Lh_nan = h_nan;
 Lh_dbgph = h_dbgph;
 iq = 0.0; vp0 = 0.0; x = 0.0; y = 0.0; i = 0.0; j = 0.0; lo = 0.0; hi = 0.0; ti = 0.0; vin = 0.0; vkk = 0.0; vg = 0.0; vpk = 0.0; vgk = 0.0;
 kz = 0.0; ksp = 0.0; ke1 = 0.0; kip = 0.0; gx = 0.0; gsp = 0.0; lx = 0.0; li = 0.0; lf = 0.0; la = 0.0; lb = 0.0;
-d_yo = 0.0; ctp = 0.0; cf = 0.0; cq = 0.0; cgd = 0.0; ihp = 0.0; ilp = 0.0; ipk = 0.0; ioff = 0.0; tp = 0.0; d_v1a = 0.0; d_pre = 0.0; d_pa = 0.0; tb_t = 0.0; tb_t2 = 0.0; tb_b0 = 0.0; tb_b1 = 0.0; tb_b2 = 0.0; hpt = 0.0; fot = 0.0; tsy = 0.0; bc1 = 0.0; bc2 = 0.0; bc3 = 0.0; fs2 = samplerate * 2.0; xin = 0.0;
+cchg = 0.0; d_yo = 0.0; ctp = 0.0; cf = 0.0; cq = 0.0; cgd = 0.0; ihp = 0.0; ilp = 0.0; ipk = 0.0; ioff = 0.0; tp = 0.0; d_v1a = 0.0; d_pre = 0.0; d_pa = 0.0; tb_t = 0.0; tb_t2 = 0.0; tb_b0 = 0.0; tb_b1 = 0.0; tb_b2 = 0.0; hpt = 0.0; fot = 0.0; tsy = 0.0; bc1 = 0.0; bc2 = 0.0; bc3 = 0.0; fs2 = samplerate * 2.0; xin = 0.0;
 a = 0.0; b = 0.0; pre = 0.0; pin = 0.0; vpi = 0.0; u = 0.0; pz = 0.0; psp = 0.0; pp = 0.0; sA = 0.0; sB = 0.0; pm = 0.0;
 vs = 0.0; fbr = 0.0; yo = 0.0; dy = 0.0; vbias = 0.0; vfull = 0.0; sagamt = 0.0; sagf = 0.0; r1 = 0.0; r2 = 0.0; rth = 0.0;
 pt = 0.0; pm1 = 0.0; pl = 0.0; tap = 0.0; wc = 0.0; cw = 0.0; sw = 0.0; al = 0.0; ga = 0.0; a0 = 0.0; ysec = 0.0; cb = 0.0; cg = 0.0;
 ts1_sb0 = 0.0; ts1_sa0 = 0.0; ts1_B0 = 0.0; ts1_A0 = 0.0; ts1_sb1 = 0.0; ts1_sa1 = 0.0; ts1_B1 = 0.0; ts1_A1 = 0.0; ts1_sb2 = 0.0; ts1_sa2 = 0.0; ts1_B2 = 0.0; ts1_A2 = 0.0; ts1_sb3 = 0.0; ts1_sa3 = 0.0; ts1_B3 = 0.0; ts1_A3 = 0.0;
 ts2_sb0 = 0.0; ts2_sa0 = 0.0; ts2_B0 = 0.0; ts2_A0 = 0.0; ts2_sb1 = 0.0; ts2_sa1 = 0.0; ts2_B1 = 0.0; ts2_A1 = 0.0; ts2_sb2 = 0.0; ts2_sa2 = 0.0; ts2_B2 = 0.0; ts2_A2 = 0.0; ts2_sb3 = 0.0; ts2_sa3 = 0.0; ts2_B3 = 0.0; ts2_A3 = 0.0;
-if (Lh_init == 0.0) {
-Lsm_p_input = p_input;
-Lsm_ch1_vol = ch1_vol;
-Lsm_ch1_treble = ch1_treble;
-Lsm_ch1_bass = ch1_bass;
-Lsm_ch1_mid = ch1_mid;
-Lsm_ch2_gain = ch2_gain;
-Lsm_ch2_treble = ch2_treble;
-Lsm_ch2_bass = ch2_bass;
-Lsm_ch2_mid = ch2_mid;
-Lsm_ch2_vol = ch2_vol;
-Lsm_chsel = chsel;
-Lsm_presence = presence;
-Lsm_standby = standby;
-Lsm_power = power;
-Lsm_p_output = p_output;
-Lh_cabsel = -1.0;
-Lh_init = 1.0;
-}
-if (Lh_sr != samplerate) {
+// samplerate-dependent constants
 Lh_sr = samplerate;
 Lh_k_in = (1.0 - exp(-2.0 * pi * 21277.39880907692 / fs2));
 Lh_k_hp7 = (1.0 / (1.0 + 2.0 * pi * 7.0 / fs2)); Lh_k_hp10 = (1.0 / (1.0 + 2.0 * pi * 10.5 / fs2)); Lh_k_hp5 = (1.0 / (1.0 + 2.0 * pi * 5.0 / fs2)); Lh_k_hp15 = (1.0 / (1.0 + 2.0 * pi * 15.0 / fs2));
@@ -509,8 +490,6 @@ wc = 2.0 * pi * min(20000.0, 0.45 * samplerate) / fs2; cw = cos(wc); sw = sin(wc
 a0 = 1.0 + al; Lh_dc_b0 = (1.0 - cw) / 2.0 / a0; Lh_dc_b1 = (1.0 - cw) / a0; Lh_dc_b2 = (1.0 - cw) / 2.0 / a0; Lh_dc_a1 = -2.0 * cw / a0; Lh_dc_a2 = (1.0 - al) / a0;
 wc = 2.0 * pi * min(20000.0, 0.45 * samplerate) / fs2; cw = cos(wc); sw = sin(wc); al = sw / (2.0 * 1.3066);
 a0 = 1.0 + al; Lh_dc2_b0 = (1.0 - cw) / 2.0 / a0; Lh_dc2_b1 = (1.0 - cw) / a0; Lh_dc2_b2 = (1.0 - cw) / 2.0 / a0; Lh_dc2_a1 = -2.0 * cw / a0; Lh_dc2_a2 = (1.0 - al) / a0;
-Lh_c1_used = -1.0; Lh_c2_used = -1.0; Lh_ts1_ut = -1.0; Lh_ts2_ut = -1.0; Lh_cabsel = -1.0;
-}
 Lsm_p_input = Lsm_p_input + 0.002 * (p_input - Lsm_p_input);
 Lsm_ch1_vol = Lsm_ch1_vol + 0.002 * (ch1_vol - Lsm_ch1_vol);
 Lsm_ch1_treble = Lsm_ch1_treble + 0.002 * (ch1_treble - Lsm_ch1_treble);
@@ -526,7 +505,6 @@ Lsm_presence = Lsm_presence + 0.002 * (presence - Lsm_presence);
 Lsm_standby = Lsm_standby + 0.002 * (standby - Lsm_standby);
 Lsm_power = Lsm_power + 0.002 * (power - Lsm_power);
 Lsm_p_output = Lsm_p_output + 0.002 * (p_output - Lsm_p_output);
-if (abs(Lsm_ch1_vol - Lh_c1_used) > 0.0005) {
 Lh_c1_used = Lsm_ch1_vol;
 tap = clamp(((pow(81.0, (Lsm_ch1_vol - 1.0) / 9.0) - 1.0) / 80.0), 0.0005, 0.9995);
 r1 = (1.0 - tap) * 1000000.0; r2 = tap * 1000000.0; r2 = r2 * 940000.0 / (r2 + 940000.0);
@@ -537,16 +515,12 @@ Lh_c1_vb1 = (r2 - r2 * r1 * (2.2 * 0.001 * 0.001 * 0.001) * bc1) / ((r1 + r2) + 
 Lh_c1_va1 = ((r1 + r2) - r2 * r1 * (2.2 * 0.001 * 0.001 * 0.001) * bc1) / ((r1 + r2) + r2 * r1 * (2.2 * 0.001 * 0.001 * 0.001) * bc1);
 Lh_c1_div = 470000.0 / (940000.0 + rth);
 Lh_c1_mill = 1.0 - exp(-2.0 * pi / (2.0 * pi * ((rth + 470000.0) * 470000.0 / (rth + 940000.0) + 10000.0) * (110.0 * 0.001 * 0.001 * 0.001 * 0.001)) / fs2);
-}
-if (abs(Lsm_ch2_gain - Lh_c2_used) > 0.0005) {
 Lh_c2_used = Lsm_ch2_gain;
 tap = clamp(((pow(32.11, (Lsm_ch2_gain - 1.0) / 9.0) - 1.0) / 31.11), 0.0005, 0.9995);
 r2 = tap * 250000.0; r1 = 470000.0 - r2;
 Lh_c2_gdiv = r2 / 470000.0; rth = r1 * r2 / 470000.0;
 Lh_c2_mill = 1.0 - exp(-2.0 * pi / (2.0 * pi * (rth + 10000.0) * (110.0 * 0.001 * 0.001 * 0.001 * 0.001)) / fs2);
-}
 Lh_c2_volr = ((pow(5.444, (Lsm_ch2_vol - 1.0) / 9.0) - 1.0) / 4.444) * 250000.0 / 470000.0;
-if (abs(Lsm_ch1_treble - Lh_ts1_ut) + abs(Lsm_ch1_mid - Lh_ts1_um) + abs(Lsm_ch1_bass - Lh_ts1_ul) > 0.001) {
 Lh_ts1_ut = Lsm_ch1_treble; Lh_ts1_um = Lsm_ch1_mid; Lh_ts1_ul = Lsm_ch1_bass;
 pt = clamp(((pow(5.444, (Lsm_ch1_treble - 1.0) / 9.0) - 1.0) / 4.444), 0.002, 0.998);
 pm1 = clamp((Lsm_ch1_mid - 1.0) / 9.0, 0.002, 0.998);
@@ -575,8 +549,6 @@ Lh_ts1_b3 = ts1_B3 / ts1_A0;
 Lh_ts1_a1 = ts1_A1 / ts1_A0;
 Lh_ts1_a2 = ts1_A2 / ts1_A0;
 Lh_ts1_a3 = ts1_A3 / ts1_A0;
-}
-if (abs(Lsm_ch2_treble - Lh_ts2_ut) + abs(Lsm_ch2_mid - Lh_ts2_um) + abs(Lsm_ch2_bass - Lh_ts2_ul) > 0.001) {
 Lh_ts2_ut = Lsm_ch2_treble; Lh_ts2_um = Lsm_ch2_mid; Lh_ts2_ul = Lsm_ch2_bass;
 pt = clamp(((pow(5.444, (Lsm_ch2_treble - 1.0) / 9.0) - 1.0) / 4.444), 0.002, 0.998);
 pm1 = clamp((Lsm_ch2_mid - 1.0) / 9.0, 0.002, 0.998);
@@ -605,10 +577,8 @@ Lh_ts2_b3 = ts2_B3 / ts2_A0;
 Lh_ts2_a1 = ts2_A1 / ts2_A0;
 Lh_ts2_a2 = ts2_A2 / ts2_A0;
 Lh_ts2_a3 = ts2_A3 / ts2_A0;
-}
 cb = floor(clamp(cab, 0.0, 7.0) + 0.5);
-if (cb != Lh_cabsel) {
-Lh_cabsel = cb; Lh_cabfade = 0.0;
+cchg = (cb != Lh_cabsel); Lh_cabsel = cb; Lh_cabfade = Lh_cabfade * (1.0 - cchg);
 Lh_cabgain = (cb == 0.0) * 1.0 + (cb == 1.0) * 2.215209906160081 + (cb == 2.0) * 2.0712497074572096 + (cb == 3.0) * 1.2139504085054076 + (cb == 4.0) * 1.001556993673081 + (cb == 5.0) * 1.0104924731756602 + (cb == 6.0) * 1.5111825399726604 + (cb == 7.0) * 1.3474236193528766;
 ctp = (cb == 1.0) * 1.0 + (cb == 2.0) * 1.0 + (cb == 3.0) * 1.0 + (cb == 4.0) * 1.0 + (cb == 5.0) * 1.0 + (cb == 6.0) * 1.0 + (cb == 7.0) * 1.0; cf = (cb == 0.0) * 1000.0 + (cb == 1.0) * 97.7 + (cb == 2.0) * 115.1 + (cb == 3.0) * 62.2 + (cb == 4.0) * 124.9 + (cb == 5.0) * 122.3 + (cb == 6.0) * 115.2 + (cb == 7.0) * 229.6; cq = (cb == 0.0) * 0.7 + (cb == 1.0) * 1.237 + (cb == 2.0) * 0.904 + (cb == 3.0) * 1.323 + (cb == 4.0) * 2.0 + (cb == 5.0) * 1.57 + (cb == 6.0) * 0.804 + (cb == 7.0) * 0.774; cgd = (cb == 2.0) * -0.01 + (cb == 4.0) * 0.01 + (cb == 7.0) * 0.01;
 cf = clamp(cf, 20.0, 0.45 * samplerate); cq = max(cq, 0.1);
@@ -620,7 +590,7 @@ Lh_cb0_b1 = (ihp * -(1.0 + cw) + ilp * (1.0 - cw) + ipk * -2.0 * cw) / a0;
 Lh_cb0_b2 = (ihp * (1.0 + cw) / 2.0 + ilp * (1.0 - cw) / 2.0 + ipk * (1.0 - al * ga)) / a0;
 Lh_cb0_a1 = ((ihp + ilp + ipk) * -2.0 * cw) / a0;
 Lh_cb0_a2 = (ihp * (1.0 - al) + ilp * (1.0 - al) + ipk * (1.0 - al / ga)) / a0;
-Lh_cb0_x1 = 0.0; Lh_cb0_x2 = 0.0; Lh_cb0_y1 = 0.0; Lh_cb0_y2 = 0.0;
+Lh_cb0_x1 = Lh_cb0_x1 * (1.0 - cchg); Lh_cb0_x2 = Lh_cb0_x2 * (1.0 - cchg); Lh_cb0_y1 = Lh_cb0_y1 * (1.0 - cchg); Lh_cb0_y2 = Lh_cb0_y2 * (1.0 - cchg);
 ctp = (cb == 1.0) * 3.0 + (cb == 2.0) * 3.0 + (cb == 3.0) * 3.0 + (cb == 4.0) * 3.0 + (cb == 5.0) * 3.0 + (cb == 6.0) * 3.0 + (cb == 7.0) * 3.0; cf = (cb == 0.0) * 1000.0 + (cb == 1.0) * 100.3 + (cb == 2.0) * 503.7 + (cb == 3.0) * 478.6 + (cb == 4.0) * 70.2 + (cb == 5.0) * 63.6 + (cb == 6.0) * 60.0 + (cb == 7.0) * 997.8; cq = (cb == 0.0) * 0.7 + (cb == 1.0) * 0.324 + (cb == 2.0) * 0.3 + (cb == 3.0) * 1.47 + (cb == 4.0) * 1.337 + (cb == 5.0) * 0.563 + (cb == 6.0) * 0.301 + (cb == 7.0) * 3.447; cgd = (cb == 1.0) * -5.69 + (cb == 2.0) * -8.19 + (cb == 3.0) * -2.97 + (cb == 4.0) * 3.79 + (cb == 5.0) * -1.95 + (cb == 6.0) * -2.7 + (cb == 7.0) * 11.4;
 cf = clamp(cf, 20.0, 0.45 * samplerate); cq = max(cq, 0.1);
 wc = 2.0 * pi * cf / samplerate; cw = cos(wc); sw = sin(wc); al = sw / (2.0 * cq); ga = pow(10.0, cgd / 40.0);
@@ -631,7 +601,7 @@ Lh_cb1_b1 = (ihp * -(1.0 + cw) + ilp * (1.0 - cw) + ipk * -2.0 * cw) / a0;
 Lh_cb1_b2 = (ihp * (1.0 + cw) / 2.0 + ilp * (1.0 - cw) / 2.0 + ipk * (1.0 - al * ga)) / a0;
 Lh_cb1_a1 = ((ihp + ilp + ipk) * -2.0 * cw) / a0;
 Lh_cb1_a2 = (ihp * (1.0 - al) + ilp * (1.0 - al) + ipk * (1.0 - al / ga)) / a0;
-Lh_cb1_x1 = 0.0; Lh_cb1_x2 = 0.0; Lh_cb1_y1 = 0.0; Lh_cb1_y2 = 0.0;
+Lh_cb1_x1 = Lh_cb1_x1 * (1.0 - cchg); Lh_cb1_x2 = Lh_cb1_x2 * (1.0 - cchg); Lh_cb1_y1 = Lh_cb1_y1 * (1.0 - cchg); Lh_cb1_y2 = Lh_cb1_y2 * (1.0 - cchg);
 ctp = (cb == 1.0) * 3.0 + (cb == 2.0) * 3.0 + (cb == 3.0) * 3.0 + (cb == 4.0) * 3.0 + (cb == 5.0) * 3.0 + (cb == 6.0) * 3.0 + (cb == 7.0) * 3.0; cf = (cb == 0.0) * 1000.0 + (cb == 1.0) * 599.3 + (cb == 2.0) * 1424.7 + (cb == 3.0) * 1539.1 + (cb == 4.0) * 120.1 + (cb == 5.0) * 119.4 + (cb == 6.0) * 864.1 + (cb == 7.0) * 995.0; cq = (cb == 0.0) * 0.7 + (cb == 1.0) * 0.377 + (cb == 2.0) * 0.791 + (cb == 3.0) * 1.02 + (cb == 4.0) * 1.125 + (cb == 5.0) * 2.375 + (cb == 6.0) * 0.465 + (cb == 7.0) * 6.0; cgd = (cb == 1.0) * -6.26 + (cb == 2.0) * 1.17 + (cb == 3.0) * 9.64 + (cb == 4.0) * -5.12 + (cb == 5.0) * -3.81 + (cb == 6.0) * -4.22 + (cb == 7.0) * -12.0;
 cf = clamp(cf, 20.0, 0.45 * samplerate); cq = max(cq, 0.1);
 wc = 2.0 * pi * cf / samplerate; cw = cos(wc); sw = sin(wc); al = sw / (2.0 * cq); ga = pow(10.0, cgd / 40.0);
@@ -642,7 +612,7 @@ Lh_cb2_b1 = (ihp * -(1.0 + cw) + ilp * (1.0 - cw) + ipk * -2.0 * cw) / a0;
 Lh_cb2_b2 = (ihp * (1.0 + cw) / 2.0 + ilp * (1.0 - cw) / 2.0 + ipk * (1.0 - al * ga)) / a0;
 Lh_cb2_a1 = ((ihp + ilp + ipk) * -2.0 * cw) / a0;
 Lh_cb2_a2 = (ihp * (1.0 - al) + ilp * (1.0 - al) + ipk * (1.0 - al / ga)) / a0;
-Lh_cb2_x1 = 0.0; Lh_cb2_x2 = 0.0; Lh_cb2_y1 = 0.0; Lh_cb2_y2 = 0.0;
+Lh_cb2_x1 = Lh_cb2_x1 * (1.0 - cchg); Lh_cb2_x2 = Lh_cb2_x2 * (1.0 - cchg); Lh_cb2_y1 = Lh_cb2_y1 * (1.0 - cchg); Lh_cb2_y2 = Lh_cb2_y2 * (1.0 - cchg);
 ctp = (cb == 1.0) * 3.0 + (cb == 2.0) * 3.0 + (cb == 3.0) * 3.0 + (cb == 4.0) * 3.0 + (cb == 5.0) * 3.0 + (cb == 6.0) * 3.0 + (cb == 7.0) * 3.0; cf = (cb == 0.0) * 1000.0 + (cb == 1.0) * 1953.5 + (cb == 2.0) * 2431.3 + (cb == 3.0) * 2621.0 + (cb == 4.0) * 4459.6 + (cb == 5.0) * 1986.4 + (cb == 6.0) * 1613.5 + (cb == 7.0) * 3089.9; cq = (cb == 0.0) * 0.7 + (cb == 1.0) * 1.975 + (cb == 2.0) * 2.993 + (cb == 3.0) * 1.637 + (cb == 4.0) * 0.997 + (cb == 5.0) * 1.848 + (cb == 6.0) * 1.878 + (cb == 7.0) * 1.077; cgd = (cb == 1.0) * 2.24 + (cb == 2.0) * -0.75 + (cb == 3.0) * 9.97 + (cb == 4.0) * 7.03 + (cb == 5.0) * 2.35 + (cb == 6.0) * -2.05 + (cb == 7.0) * 9.54;
 cf = clamp(cf, 20.0, 0.45 * samplerate); cq = max(cq, 0.1);
 wc = 2.0 * pi * cf / samplerate; cw = cos(wc); sw = sin(wc); al = sw / (2.0 * cq); ga = pow(10.0, cgd / 40.0);
@@ -653,7 +623,7 @@ Lh_cb3_b1 = (ihp * -(1.0 + cw) + ilp * (1.0 - cw) + ipk * -2.0 * cw) / a0;
 Lh_cb3_b2 = (ihp * (1.0 + cw) / 2.0 + ilp * (1.0 - cw) / 2.0 + ipk * (1.0 - al * ga)) / a0;
 Lh_cb3_a1 = ((ihp + ilp + ipk) * -2.0 * cw) / a0;
 Lh_cb3_a2 = (ihp * (1.0 - al) + ilp * (1.0 - al) + ipk * (1.0 - al / ga)) / a0;
-Lh_cb3_x1 = 0.0; Lh_cb3_x2 = 0.0; Lh_cb3_y1 = 0.0; Lh_cb3_y2 = 0.0;
+Lh_cb3_x1 = Lh_cb3_x1 * (1.0 - cchg); Lh_cb3_x2 = Lh_cb3_x2 * (1.0 - cchg); Lh_cb3_y1 = Lh_cb3_y1 * (1.0 - cchg); Lh_cb3_y2 = Lh_cb3_y2 * (1.0 - cchg);
 ctp = (cb == 1.0) * 3.0 + (cb == 2.0) * 3.0 + (cb == 3.0) * 3.0 + (cb == 4.0) * 3.0 + (cb == 5.0) * 3.0 + (cb == 6.0) * 3.0 + (cb == 7.0) * 3.0; cf = (cb == 0.0) * 1000.0 + (cb == 1.0) * 3744.4 + (cb == 2.0) * 3847.5 + (cb == 3.0) * 4252.0 + (cb == 4.0) * 6295.2 + (cb == 5.0) * 4484.5 + (cb == 6.0) * 2523.7 + (cb == 7.0) * 4568.5; cq = (cb == 0.0) * 0.7 + (cb == 1.0) * 1.04 + (cb == 2.0) * 1.095 + (cb == 3.0) * 0.3 + (cb == 4.0) * 1.517 + (cb == 5.0) * 0.793 + (cb == 6.0) * 0.516 + (cb == 7.0) * 3.448; cgd = (cb == 1.0) * 6.82 + (cb == 2.0) * 11.19 + (cb == 3.0) * -12.0 + (cb == 4.0) * 6.04 + (cb == 5.0) * 10.03 + (cb == 6.0) * 6.77 + (cb == 7.0) * 2.32;
 cf = clamp(cf, 20.0, 0.45 * samplerate); cq = max(cq, 0.1);
 wc = 2.0 * pi * cf / samplerate; cw = cos(wc); sw = sin(wc); al = sw / (2.0 * cq); ga = pow(10.0, cgd / 40.0);
@@ -664,7 +634,7 @@ Lh_cb4_b1 = (ihp * -(1.0 + cw) + ilp * (1.0 - cw) + ipk * -2.0 * cw) / a0;
 Lh_cb4_b2 = (ihp * (1.0 + cw) / 2.0 + ilp * (1.0 - cw) / 2.0 + ipk * (1.0 - al * ga)) / a0;
 Lh_cb4_a1 = ((ihp + ilp + ipk) * -2.0 * cw) / a0;
 Lh_cb4_a2 = (ihp * (1.0 - al) + ilp * (1.0 - al) + ipk * (1.0 - al / ga)) / a0;
-Lh_cb4_x1 = 0.0; Lh_cb4_x2 = 0.0; Lh_cb4_y1 = 0.0; Lh_cb4_y2 = 0.0;
+Lh_cb4_x1 = Lh_cb4_x1 * (1.0 - cchg); Lh_cb4_x2 = Lh_cb4_x2 * (1.0 - cchg); Lh_cb4_y1 = Lh_cb4_y1 * (1.0 - cchg); Lh_cb4_y2 = Lh_cb4_y2 * (1.0 - cchg);
 ctp = (cb == 1.0) * 2.0 + (cb == 2.0) * 2.0 + (cb == 3.0) * 2.0 + (cb == 4.0) * 2.0 + (cb == 5.0) * 2.0 + (cb == 6.0) * 2.0 + (cb == 7.0) * 2.0; cf = (cb == 0.0) * 1000.0 + (cb == 1.0) * 5459.4 + (cb == 2.0) * 5140.4 + (cb == 3.0) * 4403.7 + (cb == 4.0) * 3190.1 + (cb == 5.0) * 7347.2 + (cb == 6.0) * 4886.6 + (cb == 7.0) * 5987.0; cq = (cb == 0.0) * 0.7 + (cb == 1.0) * 0.4 + (cb == 2.0) * 0.4 + (cb == 3.0) * 0.4 + (cb == 4.0) * 1.502 + (cb == 5.0) * 0.441 + (cb == 6.0) * 0.815 + (cb == 7.0) * 0.4; cgd = (cb == 2.0) * 0.01 + (cb == 4.0) * 0.01;
 cf = clamp(cf, 20.0, 0.45 * samplerate); cq = max(cq, 0.1);
 wc = 2.0 * pi * cf / samplerate; cw = cos(wc); sw = sin(wc); al = sw / (2.0 * cq); ga = pow(10.0, cgd / 40.0);
@@ -675,7 +645,7 @@ Lh_cb5_b1 = (ihp * -(1.0 + cw) + ilp * (1.0 - cw) + ipk * -2.0 * cw) / a0;
 Lh_cb5_b2 = (ihp * (1.0 + cw) / 2.0 + ilp * (1.0 - cw) / 2.0 + ipk * (1.0 - al * ga)) / a0;
 Lh_cb5_a1 = ((ihp + ilp + ipk) * -2.0 * cw) / a0;
 Lh_cb5_a2 = (ihp * (1.0 - al) + ilp * (1.0 - al) + ipk * (1.0 - al / ga)) / a0;
-Lh_cb5_x1 = 0.0; Lh_cb5_x2 = 0.0; Lh_cb5_y1 = 0.0; Lh_cb5_y2 = 0.0;
+Lh_cb5_x1 = Lh_cb5_x1 * (1.0 - cchg); Lh_cb5_x2 = Lh_cb5_x2 * (1.0 - cchg); Lh_cb5_y1 = Lh_cb5_y1 * (1.0 - cchg); Lh_cb5_y2 = Lh_cb5_y2 * (1.0 - cchg);
 ctp = (cb == 1.0) * 2.0 + (cb == 2.0) * 2.0 + (cb == 3.0) * 2.0 + (cb == 4.0) * 2.0 + (cb == 5.0) * 2.0 + (cb == 6.0) * 2.0 + (cb == 7.0) * 2.0; cf = (cb == 0.0) * 1000.0 + (cb == 1.0) * 6911.6 + (cb == 2.0) * 7104.5 + (cb == 3.0) * 5899.9 + (cb == 4.0) * 5174.3 + (cb == 5.0) * 8342.4 + (cb == 6.0) * 6549.9 + (cb == 7.0) * 5987.1; cq = (cb == 0.0) * 0.7 + (cb == 1.0) * 0.4 + (cb == 2.0) * 0.4 + (cb == 3.0) * 0.4 + (cb == 4.0) * 0.4 + (cb == 5.0) * 0.443 + (cb == 6.0) * 0.4 + (cb == 7.0) * 0.4; cgd = 0.0;
 cf = clamp(cf, 20.0, 0.45 * samplerate); cq = max(cq, 0.1);
 wc = 2.0 * pi * cf / samplerate; cw = cos(wc); sw = sin(wc); al = sw / (2.0 * cq); ga = pow(10.0, cgd / 40.0);
@@ -686,7 +656,7 @@ Lh_cb6_b1 = (ihp * -(1.0 + cw) + ilp * (1.0 - cw) + ipk * -2.0 * cw) / a0;
 Lh_cb6_b2 = (ihp * (1.0 + cw) / 2.0 + ilp * (1.0 - cw) / 2.0 + ipk * (1.0 - al * ga)) / a0;
 Lh_cb6_a1 = ((ihp + ilp + ipk) * -2.0 * cw) / a0;
 Lh_cb6_a2 = (ihp * (1.0 - al) + ilp * (1.0 - al) + ipk * (1.0 - al / ga)) / a0;
-Lh_cb6_x1 = 0.0; Lh_cb6_x2 = 0.0; Lh_cb6_y1 = 0.0; Lh_cb6_y2 = 0.0;
+Lh_cb6_x1 = Lh_cb6_x1 * (1.0 - cchg); Lh_cb6_x2 = Lh_cb6_x2 * (1.0 - cchg); Lh_cb6_y1 = Lh_cb6_y1 * (1.0 - cchg); Lh_cb6_y2 = Lh_cb6_y2 * (1.0 - cchg);
 ctp = (cb == 1.0) * 2.0 + (cb == 2.0) * 2.0 + (cb == 3.0) * 2.0 + (cb == 4.0) * 2.0 + (cb == 5.0) * 2.0 + (cb == 6.0) * 2.0 + (cb == 7.0) * 2.0; cf = (cb == 0.0) * 1000.0 + (cb == 1.0) * 8322.1 + (cb == 2.0) * 8634.5 + (cb == 3.0) * 7415.2 + (cb == 4.0) * 14347.6 + (cb == 5.0) * 9523.4 + (cb == 6.0) * 8035.4 + (cb == 7.0) * 5988.1; cq = (cb == 0.0) * 0.7 + (cb == 1.0) * 0.4 + (cb == 2.0) * 0.4 + (cb == 3.0) * 0.4 + (cb == 4.0) * 3.0 + (cb == 5.0) * 0.464 + (cb == 6.0) * 0.4 + (cb == 7.0) * 0.4; cgd = 0.0;
 cf = clamp(cf, 20.0, 0.45 * samplerate); cq = max(cq, 0.1);
 wc = 2.0 * pi * cf / samplerate; cw = cos(wc); sw = sin(wc); al = sw / (2.0 * cq); ga = pow(10.0, cgd / 40.0);
@@ -697,8 +667,7 @@ Lh_cb7_b1 = (ihp * -(1.0 + cw) + ilp * (1.0 - cw) + ipk * -2.0 * cw) / a0;
 Lh_cb7_b2 = (ihp * (1.0 + cw) / 2.0 + ilp * (1.0 - cw) / 2.0 + ipk * (1.0 - al * ga)) / a0;
 Lh_cb7_a1 = ((ihp + ilp + ipk) * -2.0 * cw) / a0;
 Lh_cb7_a2 = (ihp * (1.0 - al) + ilp * (1.0 - al) + ipk * (1.0 - al / ga)) / a0;
-Lh_cb7_x1 = 0.0; Lh_cb7_x2 = 0.0; Lh_cb7_y1 = 0.0; Lh_cb7_y2 = 0.0;
-}
+Lh_cb7_x1 = Lh_cb7_x1 * (1.0 - cchg); Lh_cb7_x2 = Lh_cb7_x2 * (1.0 - cchg); Lh_cb7_y1 = Lh_cb7_y1 * (1.0 - cchg); Lh_cb7_y2 = Lh_cb7_y2 * (1.0 - cchg);
 x = (in1 + in2) * 0.5 * 2.0 * dbtoa(Lsm_p_input);
 vbias = 24.1 + (60.3 - 24.1) * Lsm_power;      // bias supply: club -24.1V / arena -60.3V
 vfull = 21.6 + (44.7 - 21.6) * Lsm_power;      // peak speaker volts at full power (15.3 / 31.6 Vrms)
@@ -931,9 +900,9 @@ hpt = Lh_k_hp34 * (Lh_pg_hpy + vpi - Lh_pg_hpx); Lh_pg_hpx = vpi; Lh_pg_hpy = hp
 u = vpi / vbias;
 sagf = 1.0 - sagamt * min(sqrt(Lh_env), 1.0);
 pm = 2.6 * sagf;
-pz = 1.0 + u; psp = pz; if (8.0 * pz < 30.0) { psp = log(1.0 + exp(8.0 * pz)) / 8.0; }
+pz = 1.0 + u; psp = max(pz, log(1.0 + exp(min(8.0 * pz, 30.0))) / 8.0);
 pp = pow(psp, 1.5); sA = pm * tanh(clamp(pp / pm, -20.0, 20.0));
-pz = 1.0 - u; psp = pz; if (8.0 * pz < 30.0) { psp = log(1.0 + exp(8.0 * pz)) / 8.0; }
+pz = 1.0 - u; psp = max(pz, log(1.0 + exp(min(8.0 * pz, 30.0))) / 8.0);
 pp = pow(psp, 1.5); sB = pm * tanh(clamp(pp / pm, -20.0, 20.0));
 dy = (sA - sB) / 3.0;
 hpt = Lh_k_hp30 * (Lh_ot_hpy + dy - Lh_ot_hpx); Lh_ot_hpx = dy; Lh_ot_hpy = hpt; dy = hpt;
@@ -1177,9 +1146,9 @@ hpt = Lh_k_hp34 * (Lh_pg_hpy + vpi - Lh_pg_hpx); Lh_pg_hpx = vpi; Lh_pg_hpy = hp
 u = vpi / vbias;
 sagf = 1.0 - sagamt * min(sqrt(Lh_env), 1.0);
 pm = 2.6 * sagf;
-pz = 1.0 + u; psp = pz; if (8.0 * pz < 30.0) { psp = log(1.0 + exp(8.0 * pz)) / 8.0; }
+pz = 1.0 + u; psp = max(pz, log(1.0 + exp(min(8.0 * pz, 30.0))) / 8.0);
 pp = pow(psp, 1.5); sA = pm * tanh(clamp(pp / pm, -20.0, 20.0));
-pz = 1.0 - u; psp = pz; if (8.0 * pz < 30.0) { psp = log(1.0 + exp(8.0 * pz)) / 8.0; }
+pz = 1.0 - u; psp = max(pz, log(1.0 + exp(min(8.0 * pz, 30.0))) / 8.0);
 pp = pow(psp, 1.5); sB = pm * tanh(clamp(pp / pm, -20.0, 20.0));
 dy = (sA - sB) / 3.0;
 hpt = Lh_k_hp30 * (Lh_ot_hpy + dy - Lh_ot_hpx); Lh_ot_hpx = dy; Lh_ot_hpy = hpt; dy = hpt;

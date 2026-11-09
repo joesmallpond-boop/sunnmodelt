@@ -267,20 +267,16 @@ def generate():
     B = []
     B.append("iq = 0; vp0 = 0; x = 0; y = 0; i = 0; j = 0; lo = 0; hi = 0; ti = 0; vin = 0; vkk = 0; vg = 0; vpk = 0; vgk = 0;")
     B.append("kz = 0; ksp = 0; ke1 = 0; kip = 0; gx = 0; gsp = 0; lx = 0; li = 0; lf = 0; la = 0; lb = 0;")
-    B.append("d_yo = 0; ctp = 0; cf = 0; cq = 0; cgd = 0; ihp = 0; ilp = 0; ipk = 0; ioff = 0; tp = 0; d_v1a = 0; d_pre = 0; d_pa = 0; tb_t = 0; tb_t2 = 0; tb_b0 = 0; tb_b1 = 0; tb_b2 = 0; hpt = 0; fot = 0; tsy = 0; bc1 = 0; bc2 = 0; bc3 = 0; fs2 = samplerate * 2; xin = 0;")
+    B.append("cchg = 0; d_yo = 0; ctp = 0; cf = 0; cq = 0; cgd = 0; ihp = 0; ilp = 0; ipk = 0; ioff = 0; tp = 0; d_v1a = 0; d_pre = 0; d_pa = 0; tb_t = 0; tb_t2 = 0; tb_b0 = 0; tb_b1 = 0; tb_b2 = 0; hpt = 0; fot = 0; tsy = 0; bc1 = 0; bc2 = 0; bc3 = 0; fs2 = samplerate * 2; xin = 0;")
     B.append("a = 0; b = 0; pre = 0; pin = 0; vpi = 0; u = 0; pz = 0; psp = 0; pp = 0; sA = 0; sB = 0; pm = 0;")
     B.append("vs = 0; fbr = 0; yo = 0; dy = 0; vbias = 0; vfull = 0; sagamt = 0; sagf = 0; r1 = 0; r2 = 0; rth = 0;")
     B.append("pt = 0; pm1 = 0; pl = 0; tap = 0; wc = 0; cw = 0; sw = 0; al = 0; ga = 0; a0 = 0; ysec = 0; cb = 0; cg = 0;")
     for nm in STACKS:
         B.append(" ".join(f"{nm}_sb{k} = 0; {nm}_sa{k} = 0; {nm}_B{k} = 0; {nm}_A{k} = 0;" for k in range(4)))
     # init / samplerate dependent
-    B.append("if (h_init == 0) {")
-    for n in SMOOTHED:
-        B.append(f"sm_{n} = {n};")
-    B.append("h_cabsel = -1;")
-    B.append("h_init = 1;")
-    B.append("}")
-    B.append("if (h_sr != samplerate) {")
+    # NOTE: no if-blocks anywhere - gen~ mis-optimised conditional coefficient updates,
+    # so every coefficient is recomputed unconditionally each sample.
+    B.append("// samplerate-dependent constants")
     B.append("h_sr = samplerate;")
     def rc(fc):
         return f"(1 - exp(-2 * pi * {fc!r} / fs2))"
@@ -302,8 +298,7 @@ def generate():
     for nm, q in (("dc", 0.5412), ("dc2", 1.3066)):
         B.append(f"wc = 2 * pi * min(20000, 0.45 * samplerate) / fs2; cw = cos(wc); sw = sin(wc); al = sw / (2 * {q});")
         B.append(f"a0 = 1 + al; h_{nm}_b0 = (1 - cw) / 2 / a0; h_{nm}_b1 = (1 - cw) / a0; h_{nm}_b2 = (1 - cw) / 2 / a0; h_{nm}_a1 = -2 * cw / a0; h_{nm}_a2 = (1 - al) / a0;")
-    B.append("h_c1_used = -1; h_c2_used = -1; h_ts1_ut = -1; h_ts2_ut = -1; h_cabsel = -1;")
-    B.append("}")
+
 
     # smoothing
     for n in SMOOTHED:
@@ -314,7 +309,7 @@ def generate():
         return f"((pow({a!r}, {p}) - 1) / {a - 1!r})"
     A30, A15, A10 = 5.444, 32.11, 81.0
     # ch1 volume network (R6 1M 10A, bright cap C4 .0022u, R7/R8 470k) - matches TP2->TP4 level at vol 3
-    B.append("if (abs(sm_ch1_vol - h_c1_used) > 0.0005) {")
+
     B.append("h_c1_used = sm_ch1_vol;")
     B.append(f"tap = clamp({aud('(sm_ch1_vol - 1) / 9', A10)}, 0.0005, 0.9995);")
     B.append("r1 = (1 - tap) * 1000000; r2 = tap * 1000000; r2 = r2 * 940000 / (r2 + 940000);")
@@ -325,35 +320,31 @@ def generate():
     B.append("h_c1_va1 = ((r1 + r2) - r2 * r1 * 2.2e-9 * bc1) / ((r1 + r2) + r2 * r1 * 2.2e-9 * bc1);")
     B.append("h_c1_div = 470000 / (940000 + rth);")
     B.append("h_c1_mill = 1 - exp(-2 * pi / (2 * pi * ((rth + 470000) * 470000 / (rth + 940000) + 10000) * 1.1e-10) / fs2);")
-    B.append("}")
     # ch2 gain (R17 220k + R18 250k 15A) and volume (R39 220k + R40 250k 30A)
-    B.append("if (abs(sm_ch2_gain - h_c2_used) > 0.0005) {")
+
     B.append("h_c2_used = sm_ch2_gain;")
     B.append(f"tap = clamp({aud('(sm_ch2_gain - 1) / 9', A15)}, 0.0005, 0.9995);")
     B.append("r2 = tap * 250000; r1 = 470000 - r2;")
     B.append("h_c2_gdiv = r2 / 470000; rth = r1 * r2 / 470000;")
     B.append("h_c2_mill = 1 - exp(-2 * pi / (2 * pi * (rth + 10000) * 1.1e-10) / fs2);")
-    B.append("}")
     B.append(f"h_c2_volr = {aud('(sm_ch2_vol - 1) / 9', A30)} * 250000 / 470000;")
     # tone stacks
     for nm, pots in (("ts1", ("ch1_treble", "ch1_mid", "ch1_bass", A30, A10)),
                      ("ts2", ("ch2_treble", "ch2_mid", "ch2_bass", A30, A15))):
         pt_, pm_, pl_, at, ab = pots
-        B.append(f"if (abs(sm_{pt_} - h_{nm}_ut) + abs(sm_{pm_} - h_{nm}_um) + abs(sm_{pl_} - h_{nm}_ul) > 0.001) {{")
+
         B.append(f"h_{nm}_ut = sm_{pt_}; h_{nm}_um = sm_{pm_}; h_{nm}_ul = sm_{pl_};")
         B.append(f"pt = clamp({aud(f'(sm_{pt_} - 1) / 9', at)}, 0.002, 0.998);")
         B.append(f"pm1 = clamp((sm_{pm_} - 1) / 9, 0.002, 0.998);")
         B.append(f"pl = clamp({aud(f'(sm_{pl_} - 1) / 9', ab)}, 0.002, 0.998);")
         B.append(stack_coeff_code(nm, "pt", "pm1", "pl"))
-        B.append("}")
 
     # cabinet coefficients (base rate)
     B.append("cb = floor(clamp(cab, 0, 7) + 0.5);")
     # flat (no nested ifs): pick each section's settings arithmetically, then one generic RBJ design
     def sel(vals):
         return " + ".join(f"(cb == {ci}) * {float(v)!r}" for ci, v in enumerate(vals) if float(v) != 0.0) or "0"
-    B.append("if (cb != h_cabsel) {")
-    B.append("h_cabsel = cb; h_cabfade = 0;")
+    B.append("cchg = (cb != h_cabsel); h_cabsel = cb; h_cabfade = h_cabfade * (1 - cchg);")
     B.append(f"h_cabgain = {sel(CAB_MAKEUP)};")
     for si in range(NSEC):
         secs = [c[1][si] if si < len(c[1]) else (0, 1000.0, 0.7, 0.0) for c in CABS]
@@ -367,8 +358,7 @@ def generate():
         B.append(f"h_cb{si}_b2 = (ihp * (1 + cw) / 2 + ilp * (1 - cw) / 2 + ipk * (1 - al * ga)) / a0;")
         B.append(f"h_cb{si}_a1 = ((ihp + ilp + ipk) * -2 * cw) / a0;")
         B.append(f"h_cb{si}_a2 = (ihp * (1 - al) + ilp * (1 - al) + ipk * (1 - al / ga)) / a0;")
-        B.append(f"h_cb{si}_x1 = 0; h_cb{si}_x2 = 0; h_cb{si}_y1 = 0; h_cb{si}_y2 = 0;")
-    B.append("}")
+        B.append(f"h_cb{si}_x1 = h_cb{si}_x1 * (1 - cchg); h_cb{si}_x2 = h_cb{si}_x2 * (1 - cchg); h_cb{si}_y1 = h_cb{si}_y1 * (1 - cchg); h_cb{si}_y2 = h_cb{si}_y2 * (1 - cchg);")
 
     # ---- audio
     B.append("x = (in1 + in2) * 0.5 * 2 * dbtoa(sm_p_input);")
@@ -419,9 +409,9 @@ def generate():
     B.append("u = vpi / vbias;")
     B.append("sagf = 1 - sagamt * min(sqrt(h_env), 1);")
     B.append("pm = 2.6 * sagf;")
-    B.append("pz = 1 + u; psp = pz; if (8 * pz < 30) { psp = log(1 + exp(8 * pz)) / 8; }")
+    B.append("pz = 1 + u; psp = max(pz, log(1 + exp(min(8 * pz, 30))) / 8);")
     B.append("pp = pow(psp, 1.5); sA = pm * tanh(clamp(pp / pm, -20, 20));")
-    B.append("pz = 1 - u; psp = pz; if (8 * pz < 30) { psp = log(1 + exp(8 * pz)) / 8; }")
+    B.append("pz = 1 - u; psp = max(pz, log(1 + exp(min(8 * pz, 30))) / 8);")
     B.append("pp = pow(psp, 1.5); sB = pm * tanh(clamp(pp / pm, -20, 20));")
     B.append("dy = (sA - sB) / 3;")
     B.append(onepole_hp("dy", "h_ot_hpx", "h_ot_hpy", "h_k_hp30"))
