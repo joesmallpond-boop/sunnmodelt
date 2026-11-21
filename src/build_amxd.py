@@ -144,7 +144,7 @@ for (yy) in (8, H - 12):  # rack screws
     for xx in (RX + 6, DBG_X - 12):
         oval(xx, yy, xx + 6, yy + 6, (110, 110, 112))
         line(xx + 1, yy + 3, xx + 5, yy + 3, (40, 40, 40))
-text(RX + 22, 20, "SPEAKER CAB", (220, 220, 220), 10, "bold")
+text(RX + 10, 21, "SPEAKER CAB", (220, 220, 220), 9, "bold")
 text(RX + 14, 64, "output power", (170, 170, 170), 8)
 lcd_msg = ", ".join(cmds)
 
@@ -311,6 +311,12 @@ pw = box(maxclass="live.tab", numinlets=1, numoutlets=3, outlettype=["", "", "fl
          patching_rect=[px[0], 200, 100, 20], presentation=1, presentation_rect=[RX + 10, 70, DBG_X - RX - 20, 18],
          varname="power", saved_attribute_attributes=enum_vo("Output Power", "Power", ["Club 25W", "Arena 100W"], 1))
 to_gen(pw, "power")
+# mono / stereo (stereo = two independent amps, L and R)
+stm = box(maxclass="live.tab", numinlets=1, numoutlets=3, outlettype=["", "", "float"], parameter_enable=1,
+          num_lines_patching=1, num_lines_presentation=1, fontsize=8.0,
+          patching_rect=[px[0] + 120, 200, 100, 20], presentation=1, presentation_rect=[RX + 92, 9, DBG_X - RX - 102, 15],
+          varname="stereo", saved_attribute_attributes=enum_vo("Stereo", "Stereo", ["Mono", "Stereo"], 0))
+to_gen(stm, "stereo")
 # debug tap + readouts
 if DEBUG:
     dbg = box(maxclass="live.menu", numinlets=1, numoutlets=3, outlettype=["", "", "float"], parameter_enable=1,

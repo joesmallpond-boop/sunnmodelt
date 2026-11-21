@@ -4,7 +4,7 @@ A Max for Live audio effect modelled from the Sunn Model T (1997 Fender reissue)
 
 ![panel](docs/panel-preview.png)
 
-**Install:** drop `T-100.amxd` onto an audio track in Live (needs Live Suite or Max for Live). It's mono in and dual-mono out.
+**Install:** drop `T-100.amxd` onto an audio track in Live (needs Live Suite or Max for Live). Mono or stereo (switch in the cab strip).
 
 ## Front panel (same layout as the amp)
 
@@ -22,6 +22,7 @@ Knobs read 1–10 like the real amp, where 5½ is half rotation. Pot tapers foll
 ## Speaker cab strip
 
 - **Speaker cab**: Direct (no speaker, amp into a resistive load), 4x12 Greenback (Marshall-style), 4x12 V30 (Orange-style), 1x15 Bass (Ampeg-style), 2x12 V30 (Orange-style), 2x10, 1x12 Open, 1x8.
+- **Mono / Stereo**: Mono sums the input to one amp, like the real head. Stereo runs two complete, independent amps (left and right), so stereo sources stay stereo. Stereo uses about twice the CPU.
 - **Output power**: Club 25W / Arena 100W, the amp's B+ / bias switch (245V / −24V vs 489V / −60V).
 - **Input / Output** trims.
 

@@ -268,7 +268,7 @@ PARAMS = [
     ("ch2_gain", 5.5, 1, 10), ("ch2_treble", 5.5, 1, 10), ("ch2_bass", 5.5, 1, 10), ("ch2_mid", 5.5, 1, 10),
     ("ch2_vol", 4, 1, 10),
     ("chsel", 1, 0, 1), ("presence", 3, 1, 10), ("standby", 0, 0, 1),
-    ("power", 1, 0, 1), ("cab", 1, 0, 7), ("p_output", -6, -36, 12),
+    ("power", 1, 0, 1), ("cab", 1, 0, 7), ("p_output", -6, -36, 12), ("stereo", 0, 0, 1),
 ]
 if DEBUG:
     PARAMS.append(("dbg_tap", 0, 0, 6))
@@ -426,7 +426,7 @@ def generate():
         B.append(f"h_cb{si}_x1 = h_cb{si}_x1 * (1 - cchg); h_cb{si}_x2 = h_cb{si}_x2 * (1 - cchg); h_cb{si}_y1 = h_cb{si}_y1 * (1 - cchg); h_cb{si}_y2 = h_cb{si}_y2 * (1 - cchg);")
 
     # ---- audio
-    B.append("x = (in1 + in2) * 0.5 * 2 * dbtoa(sm_p_input);")
+    B.append("x = XIN * 2 * dbtoa(sm_p_input);")
     B.append("vbias = 24.1 + (60.3 - 24.1) * sm_power;      // bias supply: club -24.1V / arena -60.3V")
     B.append("vfull = 21.6 + (44.7 - 21.6) * sm_power;      // peak speaker volts at full power (15.3 / 31.6 Vrms)")
     B.append("sagamt = 0.10 - 0.04 * sm_power;")
@@ -517,8 +517,7 @@ def generate():
       B.append("tp = floor(dbg_tap + 0.5);")
       B.append("y = (tp == 0) * y + (tp == 1) * (in1 + in2) * 0.5 + (tp == 2) * 0.25 * sin(2 * pi * h_dbgph) + (tp == 3) * d_v1a / 50 + (tp == 4) * d_pre / 10 + (tp == 5) * d_pa + (tp == 6) * d_yo;")
     B.append("y = fixnan(clamp(y, -4, 4));")
-    B.append("out1 = y;")
-    B.append("out2 = y;")
+    B.append("YOUT = y;")
     PROBES = ["h_ts1_a1", "dp_kn", "dp_pt", "dp_pm", "dp_pl", "fs2", "dp_sa0", "dp_sa1 * 1000", "dp_sa2 * 1000000",
               "dp_sa3 * 1000000000", "dp_A0 / 1000000", "dp_A1 / 1000000"]
     if DEBUG:
@@ -538,9 +537,24 @@ def generate():
     hs = set(H)
     pat = _re.compile(r"\b(\w+)\b")
     body = pat.sub(lambda mm: ("L" + mm.group(1)) if mm.group(1) in hs else mm.group(1), body)
+    # Two complete amps (left / right). Locals are shared (recomputed per copy); every History
+    # gets its own copy for the right channel (suffix _r). Mono feeds both the same (L+R)/2 signal.
+    alts = "|".join(sorted((_re.escape(n) for n in H), key=len, reverse=True))
+    hpat = _re.compile(r"\b(L?)(" + alts + r")\b")
+    def inst(text, sfx):
+        return hpat.sub(lambda mm: mm.group(1) + mm.group(2) + sfx, text) if sfx else text
     pre = ["L" + n + " = " + n + ";" for n in H]
     post = [n + " = fixnan(L" + n + ");" for n in H]
-    code = "\n".join(L) + "\n\n" + "\n".join(pre) + "\n" + body + "\n" + "\n".join(post) + "\n"
+    body_l = body.replace("XIN", "xl").replace("YOUT", "yl")
+    body_r = "\n".join(ln for ln in inst(body, "_r").replace("XIN", "xr").replace("YOUT", "yr").split("\n")
+                       if not _re.match(r"\s*out\d+ = ", ln))
+    L.extend(f"History {n}_r({1 if n == 'h_one' else 0});" for n in H)
+    sel = ["stw = clamp(stereo, 0, 1);", "xmono = (in1 + in2) * 0.5;",
+           "xl = xmono + (in1 - xmono) * stw;", "xr = xmono + (in2 - xmono) * stw;", "yl = 0;", "yr = 0;"]
+    outs = ["out1 = yl;", "out2 = yr;"]
+    code = ("\n".join(L) + "\n\n" + "\n".join(pre + [inst(x, "_r") for x in pre]) + "\n" + "\n".join(sel) + "\n"
+            + "// ================= LEFT / MONO AMP\n" + body_l + "\n// ================= RIGHT AMP\n" + body_r + "\n"
+            + "\n".join(outs) + "\n" + "\n".join(post + [inst(x, "_r") for x in post]) + "\n")
     code = no_sci(code)
     # every integer literal in the processing code becomes a float literal (no int arithmetic/overflow)
     head, body = code.split("\n\n", 1)
